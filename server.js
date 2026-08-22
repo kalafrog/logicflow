@@ -26,13 +26,11 @@ app.post('/api/generate', async (req, res) => {
                     content: prompt
                 }
             ],
-            model: "qwen-2.5-coder-32b",
+            model: "openai/gpt-oss-20b", // Updated model identifier
             temperature: 0.2,
         });
 
         let rawContent = chatCompletion.choices[0]?.message?.content || "";
-        
-        // Clean up markdown blocks if the AI includes them
         let mermaidCode = rawContent.replace(/```mermaid/g, '').replace(/```/g, '').trim();
 
         res.json({ mermaidCode });

@@ -1,4 +1,70 @@
+import React, { useState, useEffect, useRef } from 'react';
+import mermaid from 'mermaid';
+
 function FlowchartTab() {
+  const [prompt, setPrompt] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [mermaidCode, setMermaidCode] = useState('');
+  const [error, setError] = useState('');
+  const flowchartRef = useRef(null);
+
+  // Initialize mermaid
+  useEffect(() => {
+    mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
+  }, []);
+
+  // Re-render mermaid diagram whenever the code updates
+  useEffect(() => {
+    const renderDiagram = async () => {
+      if (mermaidCode && flowchartRef.current) {
+        try {
+          flowchartRef.current.innerHTML = '';
+          const id = 'mermaid-' + Math.random().toString(36).substring(2, 9);
+          const { svg } = await mermaid.render(id, mermaidCode);
+          flowchartRef.current.innerHTML = svg;
+        } catch (e) {
+          console.error("Mermaid rendering error:", e);
+          setError("Failed to render diagram visualization.");
+        }
+      }
+    };
+    renderDiagram();
+  }, [mermaidCode]);
+
+  const handleGenerate = async () => {
+    if (!prompt.trim()) return;
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch('https://logicflow-ompw.onrender.com/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate workflow');
+      }
+
+      setMermaidCode(data.mermaidCode);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickStart = (text) => {
+    setPrompt(text);
+  };
+
   return (
     <>
       <header className="bg-surface-container-lowest dark:bg-surface-dim border-b border-outline-variant dark:border-outline flex justify-between items-center h-14 px-gutter w-full fixed top-0 z-50">
@@ -49,6 +115,8 @@ function FlowchartTab() {
           <div className="mb-6 flex-1 flex flex-col gap-4">
             <div className="relative group h-40">
               <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
                 className="w-full h-full resize-none border-b border-outline-variant focus:border-primary focus:border-b-2 bg-transparent p-2 font-body-md text-body-md text-on-surface placeholder:text-outline transition-all outline-none"
                 placeholder="Describe your business process or paste an SOP transcript..."
               ></textarea>
@@ -64,30 +132,43 @@ function FlowchartTab() {
             <div>
               <h3 className="font-label-caps text-label-caps text-outline mb-2">Quick Starts</h3>
               <div className="flex flex-wrap gap-2">
-                <span className="px-3 py-1 rounded-full border border-outline-variant font-mono-sm text-mono-sm text-on-surface-variant cursor-pointer hover:bg-surface-variant transition-colors">Invoice Approval</span>
-                <span className="px-3 py-1 rounded-full border border-outline-variant font-mono-sm text-mono-sm text-on-surface-variant cursor-pointer hover:bg-surface-variant transition-colors">IT Ticketing</span>
-                <span className="px-3 py-1 rounded-full border border-outline-variant font-mono-sm text-mono-sm text-on-surface-variant cursor-pointer hover:bg-surface-variant transition-colors">Lead Routing</span>
+                <span onClick={() => handleQuickStart("Invoice Approval Process")} className="px-3 py-1 rounded-full border border-outline-variant font-mono-sm text-mono-sm text-on-surface-variant cursor-pointer hover:bg-surface-variant transition-colors">Invoice Approval</span>
+                <span onClick={() => handleQuickStart("IT Ticketing Workflow")} className="px-3 py-1 rounded-full border border-outline-variant font-mono-sm text-mono-sm text-on-surface-variant cursor-pointer hover:bg-surface-variant transition-colors">IT Ticketing</span>
+                <span onClick={() => handleQuickStart("Lead Routing Pipeline")} className="px-3 py-1 rounded-full border border-outline-variant font-mono-sm text-mono-sm text-on-surface-variant cursor-pointer hover:bg-surface-variant transition-colors">Lead Routing</span>
               </div>
             </div>
           </div>
-          <button className="w-full bg-primary text-on-primary hover:bg-primary-container font-label-caps text-label-caps py-3 rounded-lg shadow-sm transition-all flex justify-center items-center gap-2 mt-auto">
+
+          {error && <p className="text-red-500 text-xs mb-2">{error}</p>}
+
+          <button 
+            onClick={handleGenerate}
+            disabled={loading}
+            className="w-full bg-primary text-on-primary hover:bg-primary-container font-label-caps text-label-caps py-3 rounded-lg shadow-sm transition-all flex justify-center items-center gap-2 mt-auto disabled:opacity-50"
+          >
             <span className="material-symbols-outlined text-[18px]">magic_button</span>
-            Generate Workflow
+            {loading ? "Generating..." : "Generate Workflow"}
           </button>
         </aside>
 
         <main className="flex-1 ml-sidebar-width relative dot-grid overflow-auto bg-[#F9FAFB]">
           <div className="relative w-full h-full flex flex-col items-center justify-center min-h-[800px] min-w-[800px] p-20">
-            {/* Empty State / Placeholder for removed diagram */}
-            <div className="flex flex-col items-center gap-4 text-center">
-              <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-outline">
-                <span className="material-symbols-outlined text-[32px]">account_tree</span>
+            {/* Conditional Rendering for Flowchart or Empty State */}
+            {mermaidCode ? (
+              <div className="bg-white p-6 rounded-xl shadow-md border border-outline-variant w-full max-w-4xl overflow-auto flex justify-center">
+                <div ref={flowchartRef} className="w-full flex justify-center"></div>
               </div>
-              <div>
-                <h3 className="font-headline-md text-on-surface">No workflow active</h3>
-                <p className="font-body-md text-on-surface-variant max-w-xs">Describe your process in the sidebar to generate a new flowchart.</p>
+            ) : (
+              <div className="flex flex-col items-center gap-4 text-center">
+                <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-outline">
+                  <span className="material-symbols-outlined text-[32px]">account_tree</span>
+                </div>
+                <div>
+                  <h3 className="font-headline-md text-on-surface">No workflow active</h3>
+                  <p className="font-body-md text-on-surface-variant max-w-xs">Describe your process in the sidebar to generate a new flowchart.</p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="fixed bottom-6 left-1/2 translate-x-[calc(-50%+120px)] bg-white/80 backdrop-blur-md border border-outline-variant rounded-full shadow-sm px-4 py-2 flex items-center gap-4 z-50">

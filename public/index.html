@@ -3,66 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LogicFlow AI</title>
+    <title>LogicFlow - Text to Mermaid Flowchart</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Mermaid.js for visual workflows -->
+    <!-- Mermaid.js -->
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
     <script>
         mermaid.initialize({ startOnLoad: false, theme: 'dark' });
     </script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center p-6">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-start p-6">
 
-    <div class="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-6">
-        <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2">
-            LogicFlow AI
-        </h1>
-        <p class="text-slate-400 mb-6 text-sm">Describe your workflow idea via text or voice, and watch the AI map it out.</p>
+    <div class="w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-8">
+        <h1 class="text-2xl font-bold text-cyan-400 mb-2">LogicFlow AI</h1>
+        <p class="text-slate-400 text-sm mb-6">Transform your descriptions into professional Mermaid flowcharts instantly.</p>
 
-        <!-- Input Area -->
-        <div class="flex flex-col gap-3 mb-6">
-            <textarea id="promptInput" rows="3" 
-                class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-slate-100 focus:outline-none focus:border-cyan-500 transition" 
-                placeholder="Type your workflow idea here (e.g., User registers, sends email verification, logs in)..."></textarea>
-            
+        <!-- Input Section -->
+        <div class="space-y-4">
+            <textarea id="promptInput" rows="4" 
+                class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-slate-100 focus:outline-none focus:border-cyan-500 transition resize-none" 
+                placeholder="Describe your workflow here... (e.g., User logs in, system verifies credentials, redirects to dashboard)"></textarea>
+
             <div class="flex items-center justify-between">
                 <!-- Voice Input Button -->
                 <button id="micBtn" type="button" 
-                    class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg font-medium transition border border-slate-700">
-                    <svg id="micIcon" class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+                    class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-sm font-medium transition border border-slate-700">
+                    <svg id="micIcon" class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"></path></svg>
                     <span id="micText">Voice Input</span>
                 </button>
 
                 <!-- Generate Button -->
                 <button id="generateBtn" 
-                    class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold px-6 py-2.5 rounded-lg shadow-lg transition">
-                    Generate Workflow
+                    class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold px-6 py-2 rounded-lg transition shadow-md">
+                    Generate Flowchart
                 </button>
             </div>
         </div>
 
-        <!-- Output Visualization -->
-        <div id="loading" class="hidden text-center py-8 text-cyan-400 animate-pulse font-medium">
-            Generating your workflow structure...
+        <!-- Loading State -->
+        <div id="loading" class="hidden text-center py-6 text-cyan-400 animate-pulse">
+            Generating your flowchart...
         </div>
 
-        <div id="workflowContainer" class="bg-slate-950 border border-slate-800 rounded-lg p-4 overflow-x-auto hidden">
-            <div class="mermaid flex justify-center" id="mermaidOutput"></div>
+        <!-- Output Section -->
+        <div id="outputContainer" class="mt-8 hidden">
+            <h2 class="text-lg font-semibold text-slate-300 mb-3">Generated Workflow</h2>
+            <div class="bg-slate-950 border border-slate-800 rounded-lg p-6 overflow-x-auto flex justify-center">
+                <div class="mermaid" id="mermaidOutput"></div>
+            </div>
         </div>
     </div>
 
-    <!-- Frontend Script handling API requests and Voice Recognition -->
     <script>
         const generateBtn = document.getElementById('generateBtn');
         const promptInput = document.getElementById('promptInput');
         const loading = document.getElementById('loading');
-        const workflowContainer = document.getElementById('workflowContainer');
+        const outputContainer = document.getElementById('outputContainer');
         const mermaidOutput = document.getElementById('mermaidOutput');
         const micBtn = document.getElementById('micBtn');
         const micText = document.getElementById('micText');
 
-        // --- Voice Recognition Setup (Web Speech API) ---
+        // --- Voice Recognition (Web Speech API) ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
             const recognition = new SpeechRecognition();
@@ -83,7 +84,7 @@
             recognition.onstart = () => {
                 isListening = true;
                 micText.textContent = "Listening...";
-                micBtn.classList.add('border-cyan-500', 'bg-slate-800');
+                micBtn.classList.add('border-cyan-500');
             };
 
             recognition.onresult = (event) => {
@@ -91,8 +92,7 @@
                 promptInput.value += (promptInput.value ? ' ' : '') + transcript;
             };
 
-            recognition.onerror = (event) => {
-                console.error("Speech recognition error", event.error);
+            recognition.onerror = () => {
                 micText.textContent = "Voice Input";
                 isListening = false;
             };
@@ -103,16 +103,16 @@
                 micBtn.classList.remove('border-cyan-500');
             };
         } else {
-            micBtn.style.display = 'none'; // Hide if browser doesn't support it
+            micBtn.style.display = 'none';
         }
 
-        // --- Workflow Generation Handler ---
+        // --- Flowchart Generation ---
         generateBtn.addEventListener('click', async () => {
             const prompt = promptInput.value.trim();
             if (!prompt) return;
 
             loading.classList.remove('hidden');
-            workflowContainer.classList.add('hidden');
+            outputContainer.classList.add('hidden');
 
             try {
                 const response = await fetch('/api/generate', {
@@ -125,14 +125,14 @@
                 if (data.mermaidCode) {
                     mermaidOutput.removeAttribute('data-processed');
                     mermaidOutput.textContent = data.mermaidCode;
-                    workflowContainer.classList.remove('hidden');
+                    outputContainer.classList.remove('hidden');
                     await mermaid.run({ nodes: [mermaidOutput] });
                 } else {
-                    alert('Error generating workflow.');
+                    alert('Failed to generate flowchart.');
                 }
             } catch (err) {
                 console.error(err);
-                alert('Server connection failed.');
+                alert('Server error.');
             } finally {
                 loading.classList.add('hidden');
             }

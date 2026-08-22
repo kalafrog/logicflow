@@ -1,10 +1,18 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
 
   const togglePassword = () => {
     setShowPassword((current) => !current);
+  };
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    // Temporary bypass: navigates straight to your dashboard/flowchart page
+    navigate("/dashboard"); // Change "/dashboard" to whatever your main flowchart route path is
   };
 
   return (
@@ -23,7 +31,6 @@ function LoginPage() {
 
       {/* Main Content Canvas */}
       <main className="flex-grow flex items-center justify-center p-margin-mobile md:p-margin-desktop relative">
-        {/* Animated Background Element (Optional ambiance) */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20 z-0"></div>
 
         {/* Login Card */}
@@ -33,7 +40,7 @@ function LoginPage() {
             <p className="font-body-md text-body-md text-on-surface-variant">Welcome back to your workspace</p>
           </div>
 
-          <form action="#" className="space-y-6" method="POST" onSubmit={(e) => e.preventDefault()}>
+          <form className="space-y-6" onSubmit={handleLogin}>
             {/* Email Input */}
             <div className="space-y-2">
               <label className="font-label-caps text-label-caps text-on-surface-variant block uppercase" htmlFor="email">Email Address</label>

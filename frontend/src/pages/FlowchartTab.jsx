@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import mermaid from 'mermaid';
 
 function FlowchartTab() {
@@ -6,21 +6,29 @@ function FlowchartTab() {
   const [loading, setLoading] = useState(false);
   const [mermaidCode, setMermaidCode] = useState('');
   const [error, setError] = useState('');
+  const flowchartRef = useRef(null);
 
   // Initialize mermaid
   useEffect(() => {
-    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
   }, []);
 
   // Re-render mermaid diagram whenever the code updates
   useEffect(() => {
-    if (mermaidCode) {
-      try {
-        mermaid.contentLoaded();
-      } catch (e) {
-        console.error("Mermaid rendering error:", e);
+    const renderDiagram = async () => {
+      if (mermaidCode && flowchartRef.current) {
+        try {
+          flowchartRef.current.innerHTML = '';
+          const id = 'mermaid-' + Math.random().toString(36.substring(2, 9));
+          const { svg } = await mermaid.render(id, mermaidCode);
+          flowchartRef.current.innerHTML = svg;
+        } catch (e) {
+          console.error("Mermaid rendering error:", e);
+          setError("Failed to render diagram visualization.");
+        }
       }
-    }
+    };
+    renderDiagram();
   }, [mermaidCode]);
 
   const handleGenerate = async () => {
@@ -147,10 +155,8 @@ function FlowchartTab() {
           <div className="relative w-full h-full flex flex-col items-center justify-center min-h-[800px] min-w-[800px] p-20">
             {/* Conditional Rendering for Flowchart or Empty State */}
             {mermaidCode ? (
-              <div className="bg-white p-6 rounded-xl shadow-md border border-outline-variant w-full max-w-4xl overflow-auto">
-                <pre className="mermaid flex justify-center">
-                  {mermaidCode}
-                </pre>
+              <div className="bg-white p-6 rounded-xl shadow-md border border-outline-variant w-full max-w-4xl overflow-auto flex justify-center">
+                <div ref={flowchartRef} className="w-full flex justify-center"></div>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-4 text-center">

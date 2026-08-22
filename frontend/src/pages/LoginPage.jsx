@@ -11,8 +11,8 @@ function LoginPage() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    // Temporary bypass: navigates straight to your dashboard/flowchart page
-    navigate("/dashboard"); // Change "/dashboard" to whatever your main flowchart route path is
+    // Navigates directly to your flowchart route
+    navigate("/flowchart");
   };
 
   return (

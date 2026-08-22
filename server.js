@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors'); // 1. Import cors
 const Groq = require('groq-sdk');
 const path = require('path');
 require('dotenv').config();
@@ -8,6 +9,7 @@ const port = process.env.PORT || 3000;
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+app.use(cors()); // 2. Enable cors for all routes
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -26,7 +28,7 @@ app.post('/api/generate', async (req, res) => {
                     content: prompt
                 }
             ],
-            model: "openai/gpt-oss-20b", // Updated model identifier
+            model: "openai/gpt-oss-20b",
             temperature: 0.2,
         });
 

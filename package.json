@@ -1,24 +1,15 @@
 {
-  "name": "hex",
+  "name": "logicflow-ai",
   "version": "1.0.0",
-  "description": "AI-powered natural language SOP to Mermaid flowchart generator",
+  "description": "AI-powered workflow generator",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "axios": "^1.19.0",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "handlebars": "^4.7.9",
-    "ollama": "^0.6.3",
-    "openai": "^7.5.0",
-    "zod": "^4.4.3"
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "groq-sdk": "^0.37.0"
   }
 }

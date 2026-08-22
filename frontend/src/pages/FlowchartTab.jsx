@@ -19,7 +19,7 @@ function FlowchartTab() {
       if (mermaidCode && flowchartRef.current) {
         try {
           flowchartRef.current.innerHTML = '';
-          const id = 'mermaid-' + Math.random().toString(36.substring(2, 9));
+          const id = 'mermaid-' + Math.random().toString(36).substring(2, 9);
           const { svg } = await mermaid.render(id, mermaidCode);
           flowchartRef.current.innerHTML = svg;
         } catch (e) {

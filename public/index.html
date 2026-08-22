@@ -1,142 +1,207 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="light" lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LogicFlow - Text to Mermaid Flowchart</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Mermaid.js -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-    <script>
-        mermaid.initialize({ startOnLoad: false, theme: 'dark' });
-    </script>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>LogicFlow AI - Workflow Engine</title>
+  
+  <!-- Tailwind CSS & Fonts -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Geist:wght@400;600&display=swap" rel="stylesheet"/>
+  
+  <!-- Mermaid.js for Dynamic Graph Rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#3525cd",
+            "primary-container": "#4f46e5",
+            "on-primary": "#ffffff",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low": "#f1f3ff",
+            "surface-dim": "#d3daef",
+            "background": "#f9f9ff",
+            "on-background": "#141b2b",
+            "on-surface": "#141b2b",
+            "on-surface-variant": "#464555",
+            "outline": "#777587",
+            "outline-variant": "#c7c4d8",
+          },
+          spacing: {
+            "gutter": "16px",
+            "sidebar-width": "320px",
+          },
+          fontFamily: {
+            "display": ["Inter"],
+            "body-md": ["Inter"],
+            "mono-sm": ["Geist"]
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .dot-grid {
+      background-color: #F9FAFB;
+      background-image: radial-gradient(circle, #E5E7EB 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+  </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-start p-6">
+<body class="bg-background text-on-background font-body-md min-h-screen overflow-hidden flex flex-col antialiased">
 
-    <div class="w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-8">
-        <h1 class="text-2xl font-bold text-cyan-400 mb-2">LogicFlow AI</h1>
-        <p class="text-slate-400 text-sm mb-6">Transform your descriptions into professional Mermaid flowcharts instantly.</p>
-
-        <!-- Input Section -->
-        <div class="space-y-4">
-            <textarea id="promptInput" rows="4" 
-                class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-slate-100 focus:outline-none focus:border-cyan-500 transition resize-none" 
-                placeholder="Describe your workflow here... (e.g., User logs in, system verifies credentials, redirects to dashboard)"></textarea>
-
-            <div class="flex items-center justify-between">
-                <!-- Voice Input Button -->
-                <button id="micBtn" type="button" 
-                    class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-sm font-medium transition border border-slate-700">
-                    <svg id="micIcon" class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"></path></svg>
-                    <span id="micText">Voice Input</span>
-                </button>
-
-                <!-- Generate Button -->
-                <button id="generateBtn" 
-                    class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold px-6 py-2 rounded-lg transition shadow-md">
-                    Generate Flowchart
-                </button>
-            </div>
-        </div>
-
-        <!-- Loading State -->
-        <div id="loading" class="hidden text-center py-6 text-cyan-400 animate-pulse">
-            Generating your flowchart...
-        </div>
-
-        <!-- Output Section -->
-        <div id="outputContainer" class="mt-8 hidden">
-            <h2 class="text-lg font-semibold text-slate-300 mb-3">Generated Workflow</h2>
-            <div class="bg-slate-950 border border-slate-800 rounded-lg p-6 overflow-x-auto flex justify-center">
-                <div class="mermaid" id="mermaidOutput"></div>
-            </div>
-        </div>
+  <!-- Header / Navbar -->
+  <header class="bg-surface-container-lowest border-b border-outline-variant flex justify-between items-center h-14 px-gutter w-full fixed top-0 z-50">
+    <div class="flex items-center gap-4">
+      <div class="font-display text-xl font-bold text-primary tracking-tighter shrink-0">
+        LogicFlow AI
+      </div>
+      <div class="h-6 w-px bg-outline-variant mx-2"></div>
+      <span class="text-sm font-semibold text-on-surface">AI Workflow Builder</span>
     </div>
 
-    <script>
-        const generateBtn = document.getElementById('generateBtn');
-        const promptInput = document.getElementById('promptInput');
-        const loading = document.getElementById('loading');
-        const outputContainer = document.getElementById('outputContainer');
-        const mermaidOutput = document.getElementById('mermaidOutput');
-        const micBtn = document.getElementById('micBtn');
-        const micText = document.getElementById('micText');
+    <div class="flex items-center gap-3">
+      <span id="statusIndicator" class="text-xs text-outline italic">Ready</span>
+    </div>
+  </header>
 
-        // --- Voice Recognition (Web Speech API) ---
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            const recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = false;
-            recognition.lang = 'en-US';
+  <div class="flex flex-1 pt-14 h-screen">
+    <!-- Sidebar / Prompt Input -->
+    <aside class="bg-surface-container-lowest border-r border-outline-variant fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-sidebar-width flex flex-col p-4 z-40">
+      <div class="mb-4">
+        <h2 class="font-semibold text-lg text-on-surface mb-1">Workflow Engine</h2>
+        <p class="text-xs text-on-surface-variant">Natural Language SOP Logic Extraction</p>
+      </div>
 
-            let isListening = false;
+      <!-- Input Area -->
+      <div class="mb-4 flex-1 flex flex-col gap-4">
+        <div class="relative h-48">
+          <textarea 
+            id="promptInput"
+            class="w-full h-full resize-none border border-outline-variant rounded-lg focus:border-primary bg-transparent p-3 text-sm text-on-surface placeholder:text-outline outline-none transition-all"
+            placeholder="Describe your business process or SOP... (e.g., When a customer submits an insurance claim, check if amount < 5000...)"
+          ></textarea>
+        </div>
 
-            micBtn.addEventListener('click', () => {
-                if (!isListening) {
-                    recognition.start();
-                } else {
-                    recognition.stop();
-                }
-            });
+        <div>
+          <h3 class="text-xs font-semibold text-outline mb-2 uppercase tracking-wider">Quick Starts</h3>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="setPrompt('When an invoice is received, check if amount > $10,000. If yes, request VP approval, otherwise route to accounting.')" class="px-3 py-1 rounded-full border border-outline-variant text-xs text-on-surface-variant hover:bg-surface-container-low transition-colors">
+              Invoice Approval
+            </button>
+            <button onclick="setPrompt('When a new support ticket arrives, classify priority. High priority alerts senior engineer; low priority assigns to queue.')" class="px-3 py-1 rounded-full border border-outline-variant text-xs text-on-surface-variant hover:bg-surface-container-low transition-colors">
+              IT Ticketing
+            </button>
+          </div>
+        </div>
+      </div>
 
-            recognition.onstart = () => {
-                isListening = true;
-                micText.textContent = "Listening...";
-                micBtn.classList.add('border-cyan-500');
-            };
+      <!-- Action Button -->
+      <button 
+        id="generateBtn"
+        onclick="generateWorkflow()"
+        class="w-full bg-primary text-on-primary hover:bg-primary-container font-semibold py-3 rounded-lg shadow-sm transition-all flex justify-center items-center gap-2 mt-auto"
+      >
+        <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+        Generate Workflow
+      </button>
+    </aside>
 
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                promptInput.value += (promptInput.value ? ' ' : '') + transcript;
-            };
+    <!-- Main Canvas Area -->
+    <main class="flex-1 ml-sidebar-width relative dot-grid overflow-auto bg-[#F9FAFB] p-8 flex flex-col items-center justify-start">
+      
+      <!-- Mermaid Canvas Card -->
+      <div class="w-full max-w-4xl bg-white border border-outline-variant rounded-xl shadow-sm p-6 mb-6">
+        <h3 class="text-sm font-semibold text-outline mb-4">Flowchart Visualization</h3>
+        <div id="mermaidDiagram" class="mermaid flex justify-center overflow-x-auto py-4">
+          graph TD
+            A[Start] --> B[Enter SOP Prompt]
+            B --> C[Click Generate Workflow]
+        </div>
+      </div>
 
-            recognition.onerror = () => {
-                micText.textContent = "Voice Input";
-                isListening = false;
-            };
+      <!-- JSON Output View -->
+      <div class="w-full max-w-4xl bg-white border border-outline-variant rounded-xl shadow-sm p-6">
+        <h3 class="text-sm font-semibold text-outline mb-2">Structured JSON Schema</h3>
+        <pre id="jsonOutput" class="bg-slate-950 text-emerald-400 p-4 rounded-lg font-mono text-xs overflow-x-auto max-h-60">// Output JSON will render here...</pre>
+      </div>
 
-            recognition.onend = () => {
-                isListening = false;
-                micText.textContent = "Voice Input";
-                micBtn.classList.remove('border-cyan-500');
-            };
-        } else {
-            micBtn.style.display = 'none';
-        }
+    </main>
+  </div>
 
-        // --- Flowchart Generation ---
-        generateBtn.addEventListener('click', async () => {
-            const prompt = promptInput.value.trim();
-            if (!prompt) return;
+  <script>
+    // Initialize Mermaid
+    mermaid.initialize({ startOnLoad: false, theme: 'neutral' });
 
-            loading.classList.remove('hidden');
-            outputContainer.classList.add('hidden');
+    function setPrompt(text) {
+      document.getElementById('promptInput').value = text;
+    }
 
-            try {
-                const response = await fetch('/api/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt })
-                });
+    async function generateWorkflow() {
+      const promptInput = document.getElementById('promptInput').value.trim();
+      const statusIndicator = document.getElementById('statusIndicator');
+      const generateBtn = document.getElementById('generateBtn');
+      const jsonOutput = document.getElementById('jsonOutput');
+      const mermaidDiagram = document.getElementById('mermaidDiagram');
 
-                const data = await response.json();
-                if (data.mermaidCode) {
-                    mermaidOutput.removeAttribute('data-processed');
-                    mermaidOutput.textContent = data.mermaidCode;
-                    outputContainer.classList.remove('hidden');
-                    await mermaid.run({ nodes: [mermaidOutput] });
-                } else {
-                    alert('Failed to generate flowchart.');
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Server error.');
-            } finally {
-                loading.classList.add('hidden');
-            }
+      if (!promptInput) {
+        alert('Please enter a workflow description first.');
+        return;
+      }
+
+      // UI Loading State
+      statusIndicator.textContent = '⏳ Parsing SOP...';
+      generateBtn.disabled = true;
+      generateBtn.classList.add('opacity-50');
+
+      try {
+        const response = await fetch('/workflow/detect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: promptInput })
         });
-    </script>
+
+        const data = await response.json();
+
+        if (response.ok) {
+          jsonOutput.textContent = JSON.stringify(data, null, 2);
+
+          // Build Mermaid diagram syntax dynamically
+          let syntax = 'graph TD\n';
+          if (data.nodes && Array.isArray(data.nodes)) {
+            data.nodes.forEach(node => {
+              syntax += `  ${node.id}["${node.label} (${node.type})"]\n`;
+            });
+          }
+          if (data.edges && Array.isArray(data.edges)) {
+            data.edges.forEach(edge => {
+              syntax += `  ${edge.source} --> ${edge.target}\n`;
+            });
+          }
+
+          // Render updated Mermaid graph
+          mermaidDiagram.removeAttribute('data-processed');
+          mermaidDiagram.innerHTML = syntax;
+          await mermaid.run({ nodes: [mermaidDiagram] });
+
+          statusIndicator.textContent = '✅ Workflow generated!';
+        } else {
+          jsonOutput.textContent = JSON.stringify(data, null, 2);
+          statusIndicator.textContent = '❌ Generation failed.';
+        }
+      } catch (err) {
+        jsonOutput.textContent = 'Error: ' + err.message;
+        statusIndicator.textContent = '❌ Connection error.';
+      } finally {
+        generateBtn.disabled = false;
+        generateBtn.classList.remove('opacity-50');
+      }
+    }
+  </script>
 </body>
 </html>

@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useRef } from "react";
-import { Link, useLocation } from "react-router-dom";
 import ReactFlow, {
   Background,
   Controls,
@@ -38,7 +37,6 @@ function nodeStyle(nodeType) {
 }
 
 function FlowchartContent() {
-  const location = useLocation();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState(null);
@@ -231,30 +229,6 @@ function FlowchartContent() {
           </div>
         </div>
 
-        {/* Navigation Links */}
-        <nav className="hidden md:flex items-center gap-6 h-full">
-          <Link
-            to="/flowchart"
-            className={`h-full flex items-center px-2 text-xs font-semibold border-b-2 transition-colors ${
-              location.pathname === "/flowchart"
-                ? "text-indigo-600 border-indigo-600"
-                : "text-slate-500 border-transparent hover:text-slate-800"
-            }`}
-          >
-            Flowchart
-          </Link>
-          <Link
-            to="/swimlane"
-            className={`h-full flex items-center px-2 text-xs font-semibold border-b-2 transition-colors ${
-              location.pathname === "/swimlane"
-                ? "text-indigo-600 border-indigo-600"
-                : "text-slate-500 border-transparent hover:text-slate-800"
-            }`}
-          >
-            Swimlane
-          </Link>
-        </nav>
-
         <div className="flex items-center gap-3">
           <button className="text-slate-600 hover:bg-slate-100 p-2 rounded-full transition-colors flex items-center justify-center">
             <span className="material-symbols-outlined text-[20px]">share</span>
@@ -377,7 +351,6 @@ function FlowchartContent() {
   );
 }
 
-// Export default component wrapped with Provider
 export default function FlowchartTab() {
   return (
     <ReactFlowProvider>

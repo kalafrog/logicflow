@@ -9,13 +9,16 @@ import ReactFlow, {
   useReactFlow,
 } from "reactflow";
 import "reactflow/dist/style.css";
+import * as pdfjsLib from "pdfjs-dist";
 
-// Node palette configuration
+// Set PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+// Removed "API Call" node option
 const NODE_TYPES = [
   { type: "trigger", label: "Trigger", icon: "bolt", color: "#6366f1" },
   { type: "action", label: "Action", icon: "settings", color: "#4f46e5" },
   { type: "condition", label: "Condition", icon: "call_split", color: "#d97706" },
-  { type: "apiCall", label: "API Call", icon: "cloud", color: "#0ea5e9" },
 ];
 
 let idCounter = 1;
@@ -44,9 +47,77 @@ function FlowchartContent() {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState([]);
 
   const reactFlowWrapper = useRef(null);
+  const fileInputRef = useRef(null);
   const { project, fitView } = useReactFlow();
+
+  // Voice Recognition Setup
+  const handleMicrophoneToggle = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser.");
+      return;
+    }
+
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      setIsListening(false);
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript));
+    };
+
+    recognition.start();
+  };
+
+  // File Parsing Handling
+  const handleFileUpload = async (event) => {
+    const files = Array.from(event.target.files);
+    if (!files.length) return;
+
+    for (const file of files) {
+      setAttachedFiles((prev) => [...prev, file.name]);
+
+      if (file.type === "application/pdf") {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          let text = "";
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            text += content.items.map((item) => item.str).join(" ") + "\n";
+          }
+          setPrompt((prev) => `${prev}\n\n[Parsed from ${file.name}]:\n${text}`);
+        } catch (err) {
+          console.error("PDF Parsing error:", err);
+          setError("Failed to parse PDF content.");
+        }
+      } else if (file.type.startsWith("text/") || file.name.endsWith(".json") || file.name.endsWith(".csv")) {
+        const text = await file.text();
+        setPrompt((prev) => `${prev}\n\n[Parsed from ${file.name}]:\n${text}`);
+      } else if (file.type.startsWith("image/")) {
+        setPrompt((prev) => `${prev}\n\n[Attached image: ${file.name}]`);
+      }
+    }
+  };
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } }, eds)),
@@ -163,7 +234,6 @@ function FlowchartContent() {
           const lower = label.toLowerCase();
           if (lower.includes("trigger") || index === 0) nType = "trigger";
           else if (lower.includes("?") || lower.includes("check")) nType = "condition";
-          else if (lower.includes("api")) nType = "apiCall";
 
           parsedNodes.push({
             id: nextId(),
@@ -223,23 +293,9 @@ function FlowchartContent() {
             LogicFlow AI
           </div>
           <div className="h-6 w-px bg-slate-200 mx-2"></div>
-          <div className="flex items-center gap-2 group cursor-pointer hover:bg-slate-100 px-2 py-1 rounded transition-colors">
+          <div className="flex items-center gap-2">
             <span className="font-medium text-sm text-slate-700">Employee Onboarding SOP</span>
-            <span className="material-symbols-outlined text-[16px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">edit</span>
           </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button className="text-slate-600 hover:bg-slate-100 p-2 rounded-full transition-colors flex items-center justify-center">
-            <span className="material-symbols-outlined text-[20px]">share</span>
-          </button>
-          <button className="text-slate-600 hover:bg-slate-100 p-2 rounded-full transition-colors flex items-center justify-center">
-            <span className="material-symbols-outlined text-[20px]">settings</span>
-          </button>
-          <button className="bg-indigo-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-2">
-            <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-            Auto-Format
-          </button>
         </div>
       </header>
 
@@ -247,18 +303,67 @@ function FlowchartContent() {
       <div className="flex flex-1 pt-14 h-full relative">
         {/* Sidebar */}
         <aside className="bg-white border-r border-slate-200 fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 flex flex-col p-4 z-40">
-          <div className="mb-6">
+          <div className="mb-4">
             <h2 className="font-bold text-base text-slate-900">Workflow Engine</h2>
             <p className="text-xs text-slate-500">AI Logic Extraction</p>
           </div>
 
-          <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              className="w-full h-24 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:border-indigo-500 resize-none bg-slate-50"
-              placeholder="Describe process or paste SOP transcript..."
-            ></textarea>
+          <div className="flex-1 flex flex-col gap-3 overflow-y-auto">
+            <div className="relative">
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="w-full h-28 border border-slate-200 rounded-xl p-2.5 pr-8 text-xs text-slate-800 outline-none focus:border-indigo-500 resize-none bg-slate-50"
+                placeholder="Describe process, record voice, or attach files..."
+              ></textarea>
+
+              {/* Working Microphone Button */}
+              <button
+                onClick={handleMicrophoneToggle}
+                title={isListening ? "Stop listening" : "Start voice input"}
+                className={`absolute right-2 bottom-3 p-1.5 rounded-full transition-all ${
+                  isListening
+                    ? "bg-red-500 text-white animate-pulse"
+                    : "text-slate-400 hover:text-indigo-600 hover:bg-slate-100"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  {isListening ? "mic_off" : "mic"}
+                </span>
+              </button>
+            </div>
+
+            {/* File Upload Input */}
+            <div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                multiple
+                accept=".pdf,.txt,.csv,.json,image/*"
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full border border-dashed border-slate-300 hover:border-indigo-500 bg-slate-50 hover:bg-indigo-50/50 py-2 rounded-xl text-slate-600 text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+              >
+                <span className="material-symbols-outlined text-[16px]">attach_file</span>
+                Attach Files (PDF, Images, Text)
+              </button>
+
+              {attachedFiles.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {attachedFiles.map((name, i) => (
+                    <span
+                      key={i}
+                      className="text-[10px] bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-md truncate max-w-full"
+                    >
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <button
               onClick={handleGenerate}
@@ -306,7 +411,7 @@ function FlowchartContent() {
                 <span className="material-symbols-outlined text-[28px]">account_tree</span>
               </div>
               <h3 className="font-bold text-slate-800 text-sm">No active workflow found</h3>
-              <p className="text-xs text-slate-500 max-w-xs">Use the sidebar prompt generator or drag nodes onto the canvas.</p>
+              <p className="text-xs text-slate-500 max-w-xs">Use voice input, upload documents, or drag nodes onto the canvas.</p>
             </div>
           )}
 

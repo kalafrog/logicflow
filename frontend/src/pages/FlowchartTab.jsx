@@ -45,57 +45,86 @@ function FlowchartContent() {
   const [isRecording, setIsRecording] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState([]);
 
+  const recognitionRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const reactFlowWrapper = useRef(null);
   const fileInputRef = useRef(null);
   const { project, fitView } = useReactFlow();
 
-  // Robust Native Audio Recording Setup
+  // Universal Microphone Handler
   const handleMicrophoneToggle = async () => {
     if (isRecording) {
-      // Stop Recording
-      if (mediaRecorderRef.current) {
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) { console.error(e); }
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
         mediaRecorderRef.current.stop();
       }
       setIsRecording(false);
       return;
     }
 
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition();
+        recognitionRef.current = recognition;
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = "en-US";
+
+        recognition.onstart = () => setIsRecording(true);
+        recognition.onend = () => setIsRecording(false);
+        recognition.onerror = (err) => {
+          console.error("Speech recognition error:", err);
+          setIsRecording(false);
+        };
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          setPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript));
+        };
+
+        recognition.start();
+        return;
+      } catch (err) {
+        console.warn("SpeechRecognition fallback triggered:", err);
+      }
+    }
+
+    // Direct Browser Audio Recording Fallback (Works on Firefox, Brave, Mobile, Chrome)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        // Stop all mic tracks
         stream.getTracks().forEach((track) => track.stop());
-        
-        // Append audio note indicator
-        setPrompt((prev) => 
-          prev ? `${prev}\n\n[Voice Recording Captured (${(audioBlob.size / 1024).toFixed(1)} KB)]` 
-               : `[Voice Recording Captured (${(audioBlob.size / 1024).toFixed(1)} KB)]`
+        setIsRecording(false);
+        setPrompt((prev) =>
+          prev
+            ? `${prev}\n\n[Voice note recorded successfully]`
+            : "[Voice note recorded successfully]"
         );
       };
 
       mediaRecorder.start();
       setIsRecording(true);
     } catch (err) {
-      console.error("Microphone access error:", err);
-      alert("Microphone permission denied or not supported by this browser.");
+      console.error("Microphone access failed:", err);
+      alert("Microphone permission was denied. Please allow microphone access in your browser site settings.");
       setIsRecording(false);
     }
   };
 
-  // Native File Reading
+  // Native Multi-Format File Reader (PDF, TXT, CSV, JSON, Images)
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     if (!files.length) return;
@@ -285,7 +314,7 @@ function FlowchartContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
-      {/* Header Bar */}
+      {/* Top Header Bar */}
       <header className="bg-white border-b border-slate-200 flex justify-between items-center h-14 px-6 w-full fixed top-0 z-50">
         <div className="flex items-center gap-4">
           <div className="font-bold text-lg text-indigo-600 tracking-tighter shrink-0">
@@ -300,7 +329,7 @@ function FlowchartContent() {
 
       {/* Main Workspace */}
       <div className="flex flex-1 pt-14 h-full relative">
-        {/* Sidebar */}
+        {/* Left Sidebar Control Panel */}
         <aside className="bg-white border-r border-slate-200 fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 flex flex-col p-4 z-40">
           <div className="mb-4">
             <h2 className="font-bold text-base text-slate-900">Workflow Engine</h2>
@@ -319,7 +348,7 @@ function FlowchartContent() {
               {/* Working Microphone Toggle */}
               <button
                 onClick={handleMicrophoneToggle}
-                title={isRecording ? "Stop recording" : "Start voice recording"}
+                title={isRecording ? "Stop recording" : "Start voice input"}
                 className={`absolute right-2 bottom-3 p-1.5 rounded-full transition-all ${
                   isRecording
                     ? "bg-red-500 text-white animate-pulse"
@@ -332,6 +361,7 @@ function FlowchartContent() {
               </button>
             </div>
 
+            {/* File Attachment Upload Button */}
             <div>
               <input
                 type="file"
@@ -396,7 +426,7 @@ function FlowchartContent() {
           {error && <p className="text-amber-600 text-[10px] mt-2">{error}</p>}
         </aside>
 
-        {/* Canvas Area */}
+        {/* Interactive Flow Canvas */}
         <main
           ref={reactFlowWrapper}
           className="flex-1 ml-64 relative overflow-hidden bg-[#F8FAFC] h-[calc(100vh-3.5rem)]"

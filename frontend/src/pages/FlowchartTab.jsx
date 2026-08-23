@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import ReactFlow, {
   ReactFlowProvider,
   Background,
@@ -44,7 +44,7 @@ function FlowchartCanvas() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('flowchart'); // 'flowchart', 'swimlane', 'mindmap'
+  const [activeTab, setActiveTab] = useState('flowchart'); // 'flowchart', 'swimlane'
   const [error, setError] = useState('');
 
   const reactFlowWrapper = useRef(null);
@@ -103,7 +103,7 @@ function FlowchartCanvas() {
     setSelectedNode(null);
   };
 
-  // Connects to your backend API with a smooth fallback
+  // Connects to your backend API and translates Mermaid code into React Flow nodes
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     setLoading(true);
@@ -119,39 +119,93 @@ function FlowchartCanvas() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to generate workflow');
 
-      // If backend returns custom nodes/edges or mermaid code, parse accordingly.
-      // Here we map standard layout nodes out of the response or build default steps:
-      const baseX = 100;
-      const gapX = 260;
-      const y = 200;
+      const mermaidText = data.mermaidCode || '';
+      
+      // Parse node descriptions from mermaid text strings like A[Description text]
+      const nodeMatches = [...mermaidText.matchAll(/([A-Za-z0-9_]+)\s*\["?(.*?)"?\]/g)];
+      const edgeMatches = [...mermaidText.matchAll(/([A-Za-z0-9_]+)\s*-->\s*([A-Za-z0-9_]+)/g)];
 
-      const generatedNodes = [
-        { id: nextId(), type: "default", position: { x: baseX, y }, data: { label: `Trigger: ${prompt.slice(0, 20)}...`, nodeType: "trigger" }, style: nodeStyle("trigger") },
-        { id: nextId(), type: "default", position: { x: baseX + gapX, y }, data: { label: "Validate Input Data", nodeType: "action" }, style: nodeStyle("action") },
-        { id: nextId(), type: "default", position: { x: baseX + gapX * 2, y }, data: { label: "Check Conditions?", nodeType: "condition" }, style: nodeStyle("condition") },
-        { id: nextId(), type: "default", position: { x: baseX + gapX * 3, y }, data: { label: "Execute API Integration", nodeType: "apiCall" }, style: nodeStyle("apiCall") },
-      ];
+      let parsedNodes = [];
+      let parsedEdges = [];
 
-      const generatedEdges = [
-        { id: 'e1-2', source: generatedNodes[0].id, target: generatedNodes[1].id, animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } },
-        { id: 'e2-3', source: generatedNodes[1].id, target: generatedNodes[2].id, animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } },
-        { id: 'e3-4', source: generatedNodes[2].id, target: generatedNodes[3].id, animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } },
-      ];
+      if (nodeMatches.length > 0) {
+        const baseX = 100;
+        const gapX = 260;
+        const y = 200;
 
-      setNodes(generatedNodes);
-      setEdges(generatedEdges);
+        const idMap = {};
+        nodeMatches.forEach((match, index) => {
+          const rawId = match[1];
+          const label = match[2];
+          const uniqueId = nextId();
+          idMap[rawId] = uniqueId;
+
+          // Infer type based on text content
+          let nType = "action";
+          const lower = label.toLowerCase();
+          if (lower.includes('trigger') || index === 0) nType = "trigger";
+          else if (lower.includes('?') || lower.includes('check') || lower.includes('if')) nType = "condition";
+          else if (lower.includes('api') || lower.includes('request') || lower.includes('fetch')) nType = "apiCall";
+
+          parsedNodes.push({
+            id: uniqueId,
+            type: "default",
+            position: { x: baseX + (index * gapX), y },
+            data: { label, nodeType: nType },
+            style: nodeStyle(nType)
+          });
+        });
+
+        edgeMatches.forEach((ematch) => {
+          const sourceKey = idMap[ematch[1]];
+          const targetKey = idMap[ematch[2]];
+          if (sourceKey && targetKey) {
+            parsedEdges.push({
+              id: `e_${sourceKey}_${targetKey}`,
+              source: sourceKey,
+              target: targetKey,
+              animated: true,
+              style: { stroke: "#6366f1", strokeWidth: 2 }
+            });
+          }
+        });
+
+        // Fallback connections if edge syntax wasn't explicit
+        if (parsedEdges.length === 0 && parsedNodes.length > 1) {
+          for (let i = 0; i < parsedNodes.length - 1; i++) {
+            parsedEdges.push({
+              id: `e_${i}_${i+1}`,
+              source: parsedNodes[i].id,
+              target: parsedNodes[i+1].id,
+              animated: true,
+              style: { stroke: "#6366f1", strokeWidth: 2 }
+            });
+          }
+        }
+      }
+
+      if (parsedNodes.length > 0) {
+        setNodes(parsedNodes);
+        setEdges(parsedEdges);
+      } else {
+        throw new Error('No valid nodes parsed from response');
+      }
+
     } catch (err) {
       console.error(err);
-      setError("Backend connection failed. Loaded interactive blueprint demo.");
-      // Fallback demo layout
-      setNodes([
-        { id: nextId(), type: "default", position: { x: 100, y: 200 }, data: { label: "Trigger: Order Placed", nodeType: "trigger" }, style: nodeStyle("trigger") },
-        { id: nextId(), type: "default", position: { x: 360, y: 200 }, data: { label: "Notify Vendor", nodeType: "action" }, style: nodeStyle("action") },
-        { id: nextId(), type: "default", position: { x: 620, y: 200 }, data: { label: "In Stock?", nodeType: "condition" }, style: nodeStyle("condition") },
-      ]);
-      setEdges([
-        { id: 'e1-2', source: 'node_1', target: 'node_2', animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } }
-      ]);
+      setError("AI generation fallback loaded.");
+      // Fallback layout based on prompt
+      const fallbackNodes = [
+        { id: nextId(), type: "default", position: { x: 100, y: 200 }, data: { label: `Trigger: ${prompt}`, nodeType: "trigger" }, style: nodeStyle("trigger") },
+        { id: nextId(), type: "default", position: { x: 360, y: 200 }, data: { label: "Process Request", nodeType: "action" }, style: nodeStyle("action") },
+        { id: nextId(), type: "default", position: { x: 620, y: 200 }, data: { label: "Valid?", nodeType: "condition" }, style: nodeStyle("condition") },
+      ];
+      const fallbackEdges = [
+        { id: 'e1-2', source: fallbackNodes[0].id, target: fallbackNodes[1].id, animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } },
+        { id: 'e2-3', source: fallbackNodes[1].id, target: fallbackNodes[2].id, animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } }
+      ];
+      setNodes(fallbackNodes);
+      setEdges(fallbackEdges);
     } finally {
       setLoading(false);
     }
@@ -175,7 +229,7 @@ function FlowchartCanvas() {
           </div>
         </div>
 
-        {/* Centered Navigation Tabs */}
+        {/* Centered Navigation Tabs (Flowchart & Swimlane Only) */}
         <nav className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/60">
           <button 
             onClick={() => setActiveTab('flowchart')}
@@ -188,12 +242,6 @@ function FlowchartCanvas() {
             className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all ${activeTab === 'swimlane' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
           >
             Swimlane
-          </button>
-          <button 
-            onClick={() => setActiveTab('mindmap')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all ${activeTab === 'mindmap' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
-          >
-            Mindmap
           </button>
         </nav>
 
@@ -215,7 +263,6 @@ function FlowchartCanvas() {
 
       {/* Main Workspace Layout */}
       <div className="flex flex-1 pt-16 h-screen overflow-hidden relative">
-        {/* Mobile sidebar toggle */}
         <button
           onClick={() => setSidebarOpen(true)}
           className="md:hidden fixed top-[76px] left-3 z-40 bg-indigo-600 text-white p-2.5 rounded-xl shadow-md"
@@ -224,7 +271,6 @@ function FlowchartCanvas() {
           <span className="material-symbols-outlined text-[20px]">menu</span>
         </button>
 
-        {/* Sidebar backdrop (mobile only) */}
         {sidebarOpen && (
           <div className="md:hidden fixed inset-0 bg-black/30 z-30" onClick={() => setSidebarOpen(false)}></div>
         )}
@@ -245,7 +291,6 @@ function FlowchartCanvas() {
           </div>
 
           <div className="mb-5 flex-1 flex flex-col gap-4 overflow-y-auto">
-            {/* AI Prompt Input */}
             <div className="relative group border border-slate-200 rounded-xl p-3 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all bg-slate-50/50">
               <textarea
                 value={prompt}
@@ -277,7 +322,6 @@ function FlowchartCanvas() {
 
             <div className="h-px bg-slate-200 my-1"></div>
 
-            {/* Manual Node Palette */}
             <div>
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">Drag to Add Node</h3>
               <div className="flex flex-col gap-2">
@@ -337,7 +381,6 @@ function FlowchartCanvas() {
             <Controls className="bg-white border border-slate-200 rounded-xl shadow-md overflow-hidden p-1 gap-1" />
           </ReactFlow>
 
-          {/* Node Edit Panel Popup */}
           {selectedNode && (
             <div className="absolute top-6 right-6 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-200/50 p-4 z-30">
               <div className="flex items-center justify-between mb-3">

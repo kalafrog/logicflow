@@ -7,7 +7,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Default route points directly to Flowchart Workspace */}
+        {/* Directly loads the flowchart at root / */}
         <Route path="/" element={<FlowchartTab />} />
         <Route path="/flowchart" element={<FlowchartTab />} />
         <Route path="/login" element={<LoginPage />} />

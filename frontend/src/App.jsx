@@ -1,19 +1,12 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import LoginPage from './pages/LoginPage'
-import FlowchartTab from './pages/FlowchartTab'
-import SwimlaneTab from './pages/SwimlaneTab'
-
-function App() {
+export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* Redirect root directly to flowchart */}
+        <Route path="/" element={<Navigate to="/flowchart" replace />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/flowchart" element={<FlowchartTab />} />
-        <Route path="/swimlane" element={<SwimlaneTab />} />
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
-
-export default App

@@ -9,12 +9,7 @@ import ReactFlow, {
   useReactFlow,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import * as pdfjsLib from "pdfjs-dist";
 
-// Set PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-
-// Removed "API Call" node option
 const NODE_TYPES = [
   { type: "trigger", label: "Trigger", icon: "bolt", color: "#6366f1" },
   { type: "action", label: "Action", icon: "settings", color: "#4f46e5" },
@@ -87,7 +82,7 @@ function FlowchartContent() {
     recognition.start();
   };
 
-  // File Parsing Handling
+  // File Parsing Handling (Native FileReader)
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     if (!files.length) return;
@@ -95,26 +90,18 @@ function FlowchartContent() {
     for (const file of files) {
       setAttachedFiles((prev) => [...prev, file.name]);
 
-      if (file.type === "application/pdf") {
-        try {
-          const arrayBuffer = await file.arrayBuffer();
-          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-          let text = "";
-          for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const content = await page.getTextContent();
-            text += content.items.map((item) => item.str).join(" ") + "\n";
-          }
-          setPrompt((prev) => `${prev}\n\n[Parsed from ${file.name}]:\n${text}`);
-        } catch (err) {
-          console.error("PDF Parsing error:", err);
-          setError("Failed to parse PDF content.");
-        }
-      } else if (file.type.startsWith("text/") || file.name.endsWith(".json") || file.name.endsWith(".csv")) {
-        const text = await file.text();
-        setPrompt((prev) => `${prev}\n\n[Parsed from ${file.name}]:\n${text}`);
-      } else if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const textContent = e.target.result;
+        // Strip non-printable ASCII for PDFs / raw text
+        const cleanText = textContent.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s+/g, " ");
+        setPrompt((prev) => `${prev}\n\n[Parsed from ${file.name}]:\n${cleanText.slice(0, 2000)}`);
+      };
+
+      if (file.type.startsWith("image/")) {
         setPrompt((prev) => `${prev}\n\n[Attached image: ${file.name}]`);
+      } else {
+        reader.readAsText(file);
       }
     }
   };
@@ -317,7 +304,6 @@ function FlowchartContent() {
                 placeholder="Describe process, record voice, or attach files..."
               ></textarea>
 
-              {/* Working Microphone Button */}
               <button
                 onClick={handleMicrophoneToggle}
                 title={isListening ? "Stop listening" : "Start voice input"}
@@ -333,7 +319,6 @@ function FlowchartContent() {
               </button>
             </div>
 
-            {/* File Upload Input */}
             <div>
               <input
                 type="file"

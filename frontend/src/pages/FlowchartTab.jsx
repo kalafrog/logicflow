@@ -6,6 +6,7 @@ import ReactFlow, {
   addEdge,
   useNodesState,
   useEdgesState,
+  ReactFlowProvider,
   useReactFlow,
 } from "reactflow";
 import "reactflow/dist/style.css";
@@ -36,7 +37,7 @@ function nodeStyle(nodeType) {
   };
 }
 
-export default function FlowchartTab() {
+function FlowchartContent() {
   const location = useLocation();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -230,7 +231,7 @@ export default function FlowchartTab() {
           </div>
         </div>
 
-        {/* Tab Navigation using React Router Links */}
+        {/* Navigation Links */}
         <nav className="hidden md:flex items-center gap-6 h-full">
           <Link
             to="/flowchart"
@@ -373,5 +374,14 @@ export default function FlowchartTab() {
         </main>
       </div>
     </div>
+  );
+}
+
+// Export default component wrapped with Provider
+export default function FlowchartTab() {
+  return (
+    <ReactFlowProvider>
+      <FlowchartContent />
+    </ReactFlowProvider>
   );
 }

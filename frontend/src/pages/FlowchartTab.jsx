@@ -11,9 +11,9 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 
 const NODE_TYPES = [
-  { type: "trigger", label: "Trigger", icon: "bolt", color: "#6366f1" },
-  { type: "action", label: "Action", icon: "settings", color: "#4f46e5" },
-  { type: "condition", label: "Condition", icon: "call_split", color: "#d97706" },
+  { type: "trigger", label: "Trigger / Terminal", icon: "bolt", color: "#6366f1" },
+  { type: "action", label: "Action Process", icon: "settings", color: "#4f46e5" },
+  { type: "condition", label: "Condition / Check", icon: "call_split", color: "#d97706" },
 ];
 
 let idCounter = 1;
@@ -29,12 +29,12 @@ function nodeStyle(nodeType) {
     fontSize: 13,
     fontWeight: 600,
     color: "#1e293b",
-    minWidth: 240,
+    minWidth: 220,
     boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)",
   };
 }
 
-// Native PDF Stream Text Extraction (No external libraries required)
+// Native PDF Stream Text Extraction
 const parsePdfFile = async (file) => {
   const arrayBuffer = await file.arrayBuffer();
   const decoder = new TextDecoder("latin1");
@@ -57,7 +57,6 @@ const parsePdfFile = async (file) => {
     return result;
   }
 
-  // Fallback cleanup if stream blocks are compressed
   return rawText.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s+/g, " ").slice(0, 3000);
 };
 
@@ -147,7 +146,7 @@ function FlowchartContent() {
     }
   };
 
-  // Clean File Parsing (Fixes PDF binary %PDF-1.4 garbage)
+  // Clean File Reader
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     if (!files.length) return;
@@ -284,12 +283,17 @@ function FlowchartContent() {
           if (!visited.has(k)) { orderedKeys.push(k); }
         });
 
+        // Color & Type Parsing Logic
         orderedKeys.forEach((rawKey, index) => {
           const label = nodeMap[rawKey];
           let nType = "action";
           const lower = label.toLowerCase();
-          if (lower.includes("trigger") || index === 0) nType = "trigger";
-          else if (lower.includes("?") || lower.includes("check")) nType = "condition";
+
+          if (lower.includes("start") || lower.includes("end") || lower.includes("trigger") || index === 0 || index === orderedKeys.length - 1) {
+            nType = "trigger";
+          } else if (lower.includes("?") || lower.includes("check") || lower.includes("verify") || lower.includes("decision")) {
+            nType = "condition";
+          }
 
           parsedNodes.push({
             id: nextId(),
@@ -300,14 +304,36 @@ function FlowchartContent() {
           });
         });
 
-        for (let i = 0; i < parsedNodes.length - 1; i++) {
-          parsedEdges.push({
-            id: `e_${i}_${i + 1}`,
-            source: parsedNodes[i].id,
-            target: parsedNodes[i + 1].id,
-            animated: true,
-            style: { stroke: "#6366f1", strokeWidth: 2 },
-          });
+        // Dynamic Edge Creation
+        rawEdgeMatches.forEach((e, idx) => {
+          const srcLabel = nodeMap[e[1]];
+          const destLabel = nodeMap[e[2]];
+
+          const sourceNode = parsedNodes.find((n) => n.data.label === srcLabel);
+          const targetNode = parsedNodes.find((n) => n.data.label === destLabel);
+
+          if (sourceNode && targetNode) {
+            parsedEdges.push({
+              id: `e_${sourceNode.id}_${targetNode.id}_${idx}`,
+              source: sourceNode.id,
+              target: targetNode.id,
+              animated: true,
+              style: { stroke: "#6366f1", strokeWidth: 2 },
+            });
+          }
+        });
+
+        // Fallback connecting logic if Mermaid edges couldn't map explicitly
+        if (parsedEdges.length === 0 && parsedNodes.length > 1) {
+          for (let i = 0; i < parsedNodes.length - 1; i++) {
+            parsedEdges.push({
+              id: `e_${i}_${i + 1}`,
+              source: parsedNodes[i].id,
+              target: parsedNodes[i + 1].id,
+              animated: true,
+              style: { stroke: "#6366f1", strokeWidth: 2 },
+            });
+          }
         }
       }
 

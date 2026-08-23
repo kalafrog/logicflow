@@ -31,7 +31,7 @@ function nodeStyle(nodeType) {
     fontSize: 13,
     fontWeight: 600,
     color: "#1e293b",
-    minWidth: 220,
+    minWidth: 240,
     boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)"
   };
 }
@@ -103,7 +103,7 @@ function FlowchartCanvas() {
     setSelectedNode(null);
   };
 
-  // Connects to backend and aligns nodes in a single straight vertical flow
+  // Parses response and guarantees a strict top-to-bottom straight chain layout
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     setLoading(true);
@@ -121,22 +121,63 @@ function FlowchartCanvas() {
 
       const mermaidText = data.mermaidCode || '';
       const nodeMatches = [...mermaidText.matchAll(/([A-Za-z0-9_]+)\s*\["?(.*?)"?\]/g)];
-      const edgeMatches = [...mermaidText.matchAll(/([A-Za-z0-9_]+)\s*-->\s*([A-Za-z0-9_]+)/g)];
+      const rawEdgeMatches = [...mermaidText.matchAll(/([A-Za-z0-9_]+)\s*-->\s*([A-Za-z0-9_]+)/g)];
 
       let parsedNodes = [];
       let parsedEdges = [];
 
       if (nodeMatches.length > 0) {
-        const startX = 250;
-        const startY = 80;
-        const gapY = 110; // Vertical distance between nodes in a straight line
+        // Map raw identifiers to node labels
+        const nodeMap = {};
+        nodeMatches.forEach(m => {
+          nodeMap[m[1]] = m[2];
+        });
 
-        const idMap = {};
-        nodeMatches.forEach((match, index) => {
-          const rawId = match[1];
-          const label = match[2];
+        // Build adjacency list & find the starting root node (node with no incoming edges)
+        const adj = {};
+        const incoming = {};
+        nodeMatches.forEach(m => {
+          adj[m[1]] = [];
+          incoming[m[1]] = 0;
+        });
+
+        rawEdgeMatches.forEach(e => {
+          const src = e[1];
+          const dest = e[2];
+          if (adj[src]) {
+            adj[src].push(dest);
+            incoming[dest] = (incoming[dest] || 0) + 1;
+          }
+        });
+
+        let currentNodeKey = Object.keys(nodeMap).find(k => incoming[k] === 0) || Object.keys(nodeMap)[0];
+        
+        // Traverse linearly to maintain strict step-by-step order
+        let orderedKeys = [];
+        let visited = new Set();
+        while (currentNodeKey && !visited.has(currentNodeKey) && nodeMap[currentNodeKey]) {
+          visited.add(currentNodeKey);
+          orderedKeys.push(currentNodeKey);
+          const nexts = adj[currentNodeKey];
+          currentNodeKey = nexts && nexts.length > 0 ? nexts[0] : null;
+        }
+
+        // Include any remaining missed nodes safely
+        Object.keys(nodeMap).forEach(k => {
+          if (!visited.has(k)) {
+            orderedKeys.push(k);
+          }
+        });
+
+        const startX = 250;
+        const startY = 60;
+        const gapY = 110;
+        const generatedIdMap = {};
+
+        orderedKeys.forEach((rawKey, index) => {
+          const label = nodeMap[rawKey];
           const uniqueId = nextId();
-          idMap[rawId] = uniqueId;
+          generatedIdMap[rawKey] = uniqueId;
 
           let nType = "action";
           const lower = label.toLowerCase();
@@ -153,30 +194,15 @@ function FlowchartCanvas() {
           });
         });
 
-        edgeMatches.forEach((ematch) => {
-          const sourceKey = idMap[ematch[1]];
-          const targetKey = idMap[ematch[2]];
-          if (sourceKey && targetKey) {
-            parsedEdges.push({
-              id: `e_${sourceKey}_${targetKey}`,
-              source: sourceKey,
-              target: targetKey,
-              animated: true,
-              style: { stroke: "#6366f1", strokeWidth: 2 }
-            });
-          }
-        });
-
-        if (parsedEdges.length === 0 && parsedNodes.length > 1) {
-          for (let i = 0; i < parsedNodes.length - 1; i++) {
-            parsedEdges.push({
-              id: `e_${i}_${i+1}`,
-              source: parsedNodes[i].id,
-              target: parsedNodes[i+1].id,
-              animated: true,
-              style: { stroke: "#6366f1", strokeWidth: 2 }
-            });
-          }
+        // Connect sequential items straight down
+        for (let i = 0; i < parsedNodes.length - 1; i++) {
+          parsedEdges.push({
+            id: `e_${i}_${i+1}`,
+            source: parsedNodes[i].id,
+            target: parsedNodes[i+1].id,
+            animated: true,
+            style: { stroke: "#6366f1", strokeWidth: 2 }
+          });
         }
       }
 
@@ -192,9 +218,9 @@ function FlowchartCanvas() {
       console.error(err);
       setError("AI generation fallback loaded.");
       const fallbackNodes = [
-        { id: nextId(), type: "default", position: { x: 250, y: 80 }, data: { label: `Trigger: ${prompt}`, nodeType: "trigger" }, style: nodeStyle("trigger") },
-        { id: nextId(), type: "default", position: { x: 250, y: 190 }, data: { label: "Process Request", nodeType: "action" }, style: nodeStyle("action") },
-        { id: nextId(), type: "default", position: { x: 250, y: 300 }, data: { label: "Valid?", nodeType: "condition" }, style: nodeStyle("condition") },
+        { id: nextId(), type: "default", position: { x: 250, y: 60 }, data: { label: `Trigger: ${prompt}`, nodeType: "trigger" }, style: nodeStyle("trigger") },
+        { id: nextId(), type: "default", position: { x: 250, y: 170 }, data: { label: "Process Request", nodeType: "action" }, style: nodeStyle("action") },
+        { id: nextId(), type: "default", position: { x: 250, y: 280 }, data: { label: "Valid?", nodeType: "condition" }, style: nodeStyle("condition") },
       ];
       const fallbackEdges = [
         { id: 'e1-2', source: fallbackNodes[0].id, target: fallbackNodes[1].id, animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } },
@@ -225,7 +251,7 @@ function FlowchartCanvas() {
           </div>
         </div>
 
-        {/* Navigation Tabs */}
+        {/* Navigation Tabs (Flowchart & Swimlane Only) */}
         <nav className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/60">
           <button 
             onClick={() => setActiveTab('flowchart')}

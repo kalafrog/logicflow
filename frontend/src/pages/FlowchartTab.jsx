@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import ReactFlow, {
   ReactFlowProvider,
   Background,
@@ -48,7 +48,7 @@ function FlowchartCanvas() {
   const [error, setError] = useState('');
 
   const reactFlowWrapper = useRef(null);
-  const { project } = useReactFlow();
+  const { project, fitView } = useReactFlow();
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } }, eds)),
@@ -103,7 +103,7 @@ function FlowchartCanvas() {
     setSelectedNode(null);
   };
 
-  // Connects to your backend API and translates Mermaid code into React Flow nodes
+  // Connects to backend and formats nodes into a wrapped 4-column multi-row grid
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     setLoading(true);
@@ -120,8 +120,6 @@ function FlowchartCanvas() {
       if (!response.ok) throw new Error(data.error || 'Failed to generate workflow');
 
       const mermaidText = data.mermaidCode || '';
-      
-      // Parse node descriptions from mermaid text strings like A[Description text]
       const nodeMatches = [...mermaidText.matchAll(/([A-Za-z0-9_]+)\s*\["?(.*?)"?\]/g)];
       const edgeMatches = [...mermaidText.matchAll(/([A-Za-z0-9_]+)\s*-->\s*([A-Za-z0-9_]+)/g)];
 
@@ -129,9 +127,11 @@ function FlowchartCanvas() {
       let parsedEdges = [];
 
       if (nodeMatches.length > 0) {
-        const baseX = 100;
-        const gapX = 260;
-        const y = 200;
+        const startX = 80;
+        const startY = 100;
+        const gapX = 240;
+        const gapY = 120;
+        const maxColumns = 4; // Wrap every 4 nodes onto the next row
 
         const idMap = {};
         nodeMatches.forEach((match, index) => {
@@ -140,7 +140,9 @@ function FlowchartCanvas() {
           const uniqueId = nextId();
           idMap[rawId] = uniqueId;
 
-          // Infer type based on text content
+          const col = index % maxColumns;
+          const row = Math.floor(index / maxColumns);
+
           let nType = "action";
           const lower = label.toLowerCase();
           if (lower.includes('trigger') || index === 0) nType = "trigger";
@@ -150,7 +152,7 @@ function FlowchartCanvas() {
           parsedNodes.push({
             id: uniqueId,
             type: "default",
-            position: { x: baseX + (index * gapX), y },
+            position: { x: startX + (col * gapX), y: startY + (row * gapY) },
             data: { label, nodeType: nType },
             style: nodeStyle(nType)
           });
@@ -170,7 +172,6 @@ function FlowchartCanvas() {
           }
         });
 
-        // Fallback connections if edge syntax wasn't explicit
         if (parsedEdges.length === 0 && parsedNodes.length > 1) {
           for (let i = 0; i < parsedNodes.length - 1; i++) {
             parsedEdges.push({
@@ -187,6 +188,7 @@ function FlowchartCanvas() {
       if (parsedNodes.length > 0) {
         setNodes(parsedNodes);
         setEdges(parsedEdges);
+        setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
       } else {
         throw new Error('No valid nodes parsed from response');
       }
@@ -194,11 +196,10 @@ function FlowchartCanvas() {
     } catch (err) {
       console.error(err);
       setError("AI generation fallback loaded.");
-      // Fallback layout based on prompt
       const fallbackNodes = [
-        { id: nextId(), type: "default", position: { x: 100, y: 200 }, data: { label: `Trigger: ${prompt}`, nodeType: "trigger" }, style: nodeStyle("trigger") },
-        { id: nextId(), type: "default", position: { x: 360, y: 200 }, data: { label: "Process Request", nodeType: "action" }, style: nodeStyle("action") },
-        { id: nextId(), type: "default", position: { x: 620, y: 200 }, data: { label: "Valid?", nodeType: "condition" }, style: nodeStyle("condition") },
+        { id: nextId(), type: "default", position: { x: 80, y: 100 }, data: { label: `Trigger: ${prompt}`, nodeType: "trigger" }, style: nodeStyle("trigger") },
+        { id: nextId(), type: "default", position: { x: 320, y: 100 }, data: { label: "Process Request", nodeType: "action" }, style: nodeStyle("action") },
+        { id: nextId(), type: "default", position: { x: 560, y: 100 }, data: { label: "Valid?", nodeType: "condition" }, style: nodeStyle("condition") },
       ];
       const fallbackEdges = [
         { id: 'e1-2', source: fallbackNodes[0].id, target: fallbackNodes[1].id, animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } },
@@ -206,6 +207,7 @@ function FlowchartCanvas() {
       ];
       setNodes(fallbackNodes);
       setEdges(fallbackEdges);
+      setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
     } finally {
       setLoading(false);
     }
@@ -217,7 +219,6 @@ function FlowchartCanvas() {
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
       {/* Top Professional Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 flex justify-between items-center h-16 px-6 w-full fixed top-0 z-50 shadow-xs">
-        {/* Brand & Project Title */}
         <div className="flex items-center gap-3">
           <div className="font-bold text-lg bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent tracking-tight">
             LogicFlow AI
@@ -229,7 +230,7 @@ function FlowchartCanvas() {
           </div>
         </div>
 
-        {/* Centered Navigation Tabs (Flowchart & Swimlane Only) */}
+        {/* Navigation Tabs */}
         <nav className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/60">
           <button 
             onClick={() => setActiveTab('flowchart')}

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import ReactFlow, {
   ReactFlowProvider,
   Background,
@@ -31,7 +31,7 @@ function nodeStyle(nodeType) {
     fontSize: 13,
     fontWeight: 600,
     color: "#1e293b",
-    minWidth: 180,
+    minWidth: 220,
     boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)"
   };
 }
@@ -103,7 +103,7 @@ function FlowchartCanvas() {
     setSelectedNode(null);
   };
 
-  // Connects to backend and formats nodes into a wrapped 4-column multi-row grid
+  // Connects to backend and aligns nodes in a single straight vertical flow
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     setLoading(true);
@@ -127,11 +127,9 @@ function FlowchartCanvas() {
       let parsedEdges = [];
 
       if (nodeMatches.length > 0) {
-        const startX = 80;
-        const startY = 100;
-        const gapX = 240;
-        const gapY = 120;
-        const maxColumns = 4; // Wrap every 4 nodes onto the next row
+        const startX = 250;
+        const startY = 80;
+        const gapY = 110; // Vertical distance between nodes in a straight line
 
         const idMap = {};
         nodeMatches.forEach((match, index) => {
@@ -139,9 +137,6 @@ function FlowchartCanvas() {
           const label = match[2];
           const uniqueId = nextId();
           idMap[rawId] = uniqueId;
-
-          const col = index % maxColumns;
-          const row = Math.floor(index / maxColumns);
 
           let nType = "action";
           const lower = label.toLowerCase();
@@ -152,7 +147,7 @@ function FlowchartCanvas() {
           parsedNodes.push({
             id: uniqueId,
             type: "default",
-            position: { x: startX + (col * gapX), y: startY + (row * gapY) },
+            position: { x: startX, y: startY + (index * gapY) },
             data: { label, nodeType: nType },
             style: nodeStyle(nType)
           });
@@ -197,9 +192,9 @@ function FlowchartCanvas() {
       console.error(err);
       setError("AI generation fallback loaded.");
       const fallbackNodes = [
-        { id: nextId(), type: "default", position: { x: 80, y: 100 }, data: { label: `Trigger: ${prompt}`, nodeType: "trigger" }, style: nodeStyle("trigger") },
-        { id: nextId(), type: "default", position: { x: 320, y: 100 }, data: { label: "Process Request", nodeType: "action" }, style: nodeStyle("action") },
-        { id: nextId(), type: "default", position: { x: 560, y: 100 }, data: { label: "Valid?", nodeType: "condition" }, style: nodeStyle("condition") },
+        { id: nextId(), type: "default", position: { x: 250, y: 80 }, data: { label: `Trigger: ${prompt}`, nodeType: "trigger" }, style: nodeStyle("trigger") },
+        { id: nextId(), type: "default", position: { x: 250, y: 190 }, data: { label: "Process Request", nodeType: "action" }, style: nodeStyle("action") },
+        { id: nextId(), type: "default", position: { x: 250, y: 300 }, data: { label: "Valid?", nodeType: "condition" }, style: nodeStyle("condition") },
       ];
       const fallbackEdges = [
         { id: 'e1-2', source: fallbackNodes[0].id, target: fallbackNodes[1].id, animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } },

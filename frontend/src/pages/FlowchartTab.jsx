@@ -4,6 +4,7 @@ import mermaid from 'mermaid';
 function FlowchartTab() {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('flowchart'); // 'flowchart', 'swimlane', 'mindmap'
   const [mermaidCode, setMermaidCode] = useState('');
   const [error, setError] = useState('');
   const flowchartRef = useRef(null);
@@ -66,138 +67,159 @@ function FlowchartTab() {
   };
 
   return (
-    <>
-      <header className="bg-surface-container-lowest dark:bg-surface-dim border-b border-outline-variant dark:border-outline flex justify-between items-center h-14 px-gutter w-full fixed top-0 z-50">
-        <div className="flex items-center gap-4">
-          <div className="font-display text-headline-md text-primary dark:text-inverse-primary tracking-tighter shrink-0">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+      {/* Top Professional Header */}
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 flex justify-between items-center h-16 px-6 w-full fixed top-0 z-50 shadow-xs">
+        {/* Brand & Project Title */}
+        <div className="flex items-center gap-3">
+          <div className="font-bold text-lg bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent tracking-tight">
             LogicFlow AI
           </div>
-          <div className="h-6 w-px bg-outline-variant mx-2"></div>
-          <div className="flex items-center gap-2 group cursor-pointer hover:bg-surface-container-low px-2 py-1 rounded transition-colors">
-            <span className="font-headline-md text-headline-md text-on-surface">Employee Onboarding SOP</span>
-            <span className="material-symbols-outlined text-[16px] text-outline opacity-0 group-hover:opacity-100 transition-opacity">edit</span>
+          <div className="h-5 w-px bg-slate-200"></div>
+          <div className="flex items-center gap-2 group cursor-pointer hover:bg-slate-100 px-3 py-1.5 rounded-lg transition-all">
+            <span className="font-medium text-sm text-slate-700">Employee Onboarding SOP</span>
+            <span className="material-symbols-outlined text-[16px] text-slate-400 group-hover:text-slate-600 transition-colors">edit</span>
           </div>
         </div>
-        <nav className="hidden md:flex items-center gap-6 h-full">
-          <button className="h-full text-primary dark:text-primary-fixed border-b-2 border-primary dark:border-primary-fixed pb-1 font-label-caps text-label-caps px-2 opacity-80 scale-95 transition-all">
+
+        {/* Centered Navigation Tabs */}
+        <nav className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/60">
+          <button 
+            onClick={() => setActiveTab('flowchart')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all ${activeTab === 'flowchart' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+          >
             Flowchart
           </button>
-          <button className="h-full text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors font-label-caps text-label-caps px-2">
+          <button 
+            onClick={() => setActiveTab('swimlane')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all ${activeTab === 'swimlane' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+          >
             Swimlane
           </button>
-          <button className="h-full text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors font-label-caps text-label-caps px-2">
+          <button 
+            onClick={() => setActiveTab('mindmap')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all ${activeTab === 'mindmap' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+          >
             Mindmap
           </button>
         </nav>
+
+        {/* Right Actions & Sign In Button */}
         <div className="flex items-center gap-3">
-          <button className="text-on-surface-variant hover:bg-surface-variant p-2 rounded-full transition-colors flex items-center justify-center">
+          <button className="text-slate-600 hover:bg-slate-100 p-2 rounded-xl transition-colors flex items-center justify-center">
             <span className="material-symbols-outlined text-[20px]">share</span>
           </button>
-          <button className="text-on-surface-variant hover:bg-surface-variant p-2 rounded-full transition-colors flex items-center justify-center">
+          <button className="text-slate-600 hover:bg-slate-100 p-2 rounded-xl transition-colors flex items-center justify-center">
             <span className="material-symbols-outlined text-[20px]">settings</span>
           </button>
-          <button className="font-label-caps text-label-caps text-on-surface-variant hover:bg-surface-variant px-4 py-2 rounded-lg transition-colors border border-outline-variant">
-            Export
-          </button>
-          <button className="font-label-caps text-label-caps bg-primary text-on-primary hover:bg-primary-container px-4 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-2">
-            <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-            Auto-Format
+          <div className="h-5 w-px bg-slate-200 mx-1"></div>
+          <button className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl transition-all shadow-sm shadow-indigo-100 flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-[16px]">login</span>
+            Sign In
           </button>
         </div>
       </header>
 
-      <div className="flex flex-1 pt-14 h-screen">
-        <aside className="bg-surface-container-lowest dark:bg-surface-dim border-r border-outline-variant dark:border-outline fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-sidebar-width flex flex-col p-4 z-40">
+      {/* Main Workspace Layout */}
+      <div className="flex flex-1 pt-16 h-screen overflow-hidden">
+        {/* Left Sidebar Panel */}
+        <aside className="bg-white border-r border-slate-200 fixed left-0 top-16 h-[calc(100vh-4rem)] w-80 flex flex-col p-5 z-40 shadow-xs">
           <div className="mb-6">
-            <h2 className="font-headline-md text-headline-md text-on-surface mb-1">Workflow Engine</h2>
-            <p className="font-body-md text-body-md text-on-surface-variant">AI Logic Extraction</p>
+            <h2 className="font-bold text-base text-slate-900 tracking-tight">Workflow Engine</h2>
+            <p className="text-xs text-slate-500 font-medium">AI Logic Extraction & Generation</p>
           </div>
-          <div className="mb-6 flex-1 flex flex-col gap-4">
-            <div className="relative group h-40">
+
+          <div className="mb-6 flex-1 flex flex-col gap-5">
+            <div className="relative group border border-slate-200 rounded-xl p-3 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/10 transition-all bg-slate-50/50 h-44 flex flex-col">
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                className="w-full h-full resize-none border-b border-outline-variant focus:border-primary focus:border-b-2 bg-transparent p-2 font-body-md text-body-md text-on-surface placeholder:text-outline transition-all outline-none"
+                className="w-full flex-1 resize-none bg-transparent text-sm text-slate-800 placeholder:text-slate-400 outline-none"
                 placeholder="Describe your business process or paste an SOP transcript..."
               ></textarea>
-              <div className="absolute bottom-2 right-2 flex gap-1">
-                <button className="p-1 rounded text-outline hover:text-primary hover:bg-surface-container-low transition-colors">
-                  <span className="material-symbols-outlined text-[16px]">mic</span>
-                </button>
-                <button className="p-1 rounded text-outline hover:text-primary hover:bg-surface-container-low transition-colors">
-                  <span className="material-symbols-outlined text-[16px]">attach_file</span>
-                </button>
+              <div className="flex justify-between items-center pt-2 border-t border-slate-200/60 mt-2">
+                <div className="flex gap-1">
+                  <button className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-200/50 transition-colors" title="Voice Input">
+                    <span className="material-symbols-outlined text-[16px]">mic</span>
+                  </button>
+                  <button className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-200/50 transition-colors" title="Attach Transcript">
+                    <span className="material-symbols-outlined text-[16px]">attach_file</span>
+                  </button>
+                </div>
+                <span className="text-[10px] text-slate-400 font-medium">{prompt.length} chars</span>
               </div>
             </div>
+
             <div>
-              <h3 className="font-label-caps text-label-caps text-outline mb-2">Quick Starts</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">Quick Starts</h3>
               <div className="flex flex-wrap gap-2">
-                <span onClick={() => handleQuickStart("Invoice Approval Process")} className="px-3 py-1 rounded-full border border-outline-variant font-mono-sm text-mono-sm text-on-surface-variant cursor-pointer hover:bg-surface-variant transition-colors">Invoice Approval</span>
-                <span onClick={() => handleQuickStart("IT Ticketing Workflow")} className="px-3 py-1 rounded-full border border-outline-variant font-mono-sm text-mono-sm text-on-surface-variant cursor-pointer hover:bg-surface-variant transition-colors">IT Ticketing</span>
-                <span onClick={() => handleQuickStart("Lead Routing Pipeline")} className="px-3 py-1 rounded-full border border-outline-variant font-mono-sm text-mono-sm text-on-surface-variant cursor-pointer hover:bg-surface-variant transition-colors">Lead Routing</span>
+                <button onClick={() => handleQuickStart("Invoice Approval Process")} className="text-xs bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors font-medium">Invoice Approval</button>
+                <button onClick={() => handleQuickStart("IT Ticketing Workflow")} className="text-xs bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors font-medium">IT Ticketing</button>
+                <button onClick={() => handleQuickStart("Lead Routing Pipeline")} className="text-xs bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors font-medium">Lead Routing</button>
               </div>
             </div>
           </div>
 
-          {error && <p className="text-red-500 text-xs mb-2">{error}</p>}
+          {error && <p className="text-rose-600 text-xs font-medium mb-3 bg-rose-50 p-2.5 rounded-lg border border-rose-200">{error}</p>}
 
           <button 
             onClick={handleGenerate}
             disabled={loading}
-            className="w-full bg-primary text-on-primary hover:bg-primary-container font-label-caps text-label-caps py-3 rounded-lg shadow-sm transition-all flex justify-center items-center gap-2 mt-auto disabled:opacity-50"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white text-xs font-semibold py-3 rounded-xl shadow-md shadow-indigo-100 transition-all flex justify-center items-center gap-2 mt-auto disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-[18px]">magic_button</span>
-            {loading ? "Generating..." : "Generate Workflow"}
+            {loading ? "Synthesizing Logic..." : "Generate Workflow"}
           </button>
         </aside>
 
-        <main className="flex-1 ml-sidebar-width relative dot-grid overflow-auto bg-[#F9FAFB]">
-          <div className="relative w-full h-full flex flex-col items-center justify-center min-h-[800px] min-w-[800px] p-20">
-            {/* Conditional Rendering for Flowchart or Empty State */}
+        {/* Main Canvas Area */}
+        <main className="flex-1 ml-80 relative dot-grid overflow-auto bg-[#F8FAFC] flex flex-col items-center justify-center">
+          <div className="relative w-full h-full flex flex-col items-center justify-center p-16">
             {mermaidCode ? (
-              <div className="bg-white p-6 rounded-xl shadow-md border border-outline-variant w-full max-w-4xl overflow-auto flex justify-center">
+              <div className="bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 w-full max-w-5xl overflow-auto flex justify-center my-auto">
                 <div ref={flowchartRef} className="w-full flex justify-center"></div>
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-4 text-center">
-                <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-outline">
+              <div className="flex flex-col items-center gap-4 text-center max-w-sm">
+                <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-inner">
                   <span className="material-symbols-outlined text-[32px]">account_tree</span>
                 </div>
                 <div>
-                  <h3 className="font-headline-md text-on-surface">No workflow active</h3>
-                  <p className="font-body-md text-on-surface-variant max-w-xs">Describe your process in the sidebar to generate a new flowchart.</p>
+                  <h3 className="font-bold text-slate-800 text-base mb-1">No active workflow</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">Describe your operational process or pick a quick start in the sidebar to build your map.</p>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="fixed bottom-6 left-1/2 translate-x-[calc(-50%+120px)] bg-white/80 backdrop-blur-md border border-outline-variant rounded-full shadow-sm px-4 py-2 flex items-center gap-4 z-50">
+          {/* Floating Canvas Toolbar */}
+          <div className="fixed bottom-6 left-1/2 translate-x-[calc(-50%+80px)] bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-full shadow-lg shadow-slate-200/50 px-4 py-2 flex items-center gap-4 z-30">
             <div className="flex items-center gap-2">
-              <button className="p-1 text-on-surface-variant hover:text-primary transition-colors">
-                <span className="material-symbols-outlined text-[18px]">remove</span>
+              <button className="p-1.5 text-slate-500 hover:text-indigo-600 transition-colors rounded-lg hover:bg-slate-100">
+                <span className="material-symbols-outlined text-[16px]">remove</span>
               </button>
-              <span className="font-mono-sm text-[12px] text-on-surface w-12 text-center">100%</span>
-              <button className="p-1 text-on-surface-variant hover:text-primary transition-colors">
-                <span className="material-symbols-outlined text-[18px]">add</span>
+              <span className="text-xs font-mono font-semibold text-slate-700 w-10 text-center">100%</span>
+              <button className="p-1.5 text-slate-500 hover:text-indigo-600 transition-colors rounded-lg hover:bg-slate-100">
+                <span className="material-symbols-outlined text-[16px]">add</span>
               </button>
             </div>
-            <div className="w-px h-4 bg-outline-variant"></div>
-            <button className="p-1 text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1" title="Fit to Screen">
-              <span className="material-symbols-outlined text-[18px]">fit_screen</span>
+            <div className="w-px h-4 bg-slate-200"></div>
+            <button className="p-1.5 text-slate-500 hover:text-indigo-600 transition-colors rounded-lg hover:bg-slate-100 flex items-center" title="Fit to Screen">
+              <span className="material-symbols-outlined text-[16px]">fit_screen</span>
             </button>
-            <div className="w-px h-4 bg-outline-variant"></div>
+            <div className="w-px h-4 bg-slate-200"></div>
             <div className="flex items-center gap-1">
-              <button className="p-1 text-on-surface-variant hover:text-primary transition-colors">
-                <span className="material-symbols-outlined text-[18px]">undo</span>
+              <button className="p-1.5 text-slate-500 hover:text-indigo-600 transition-colors rounded-lg hover:bg-slate-100" title="Undo">
+                <span className="material-symbols-outlined text-[16px]">undo</span>
               </button>
-              <button className="p-1 text-outline cursor-not-allowed">
-                <span className="material-symbols-outlined text-[18px]">redo</span>
+              <button className="p-1.5 text-slate-300 cursor-not-allowed rounded-lg" title="Redo">
+                <span className="material-symbols-outlined text-[16px]">redo</span>
               </button>
             </div>
           </div>
         </main>
       </div>
-    </>
+    </div>
   );
 }
 

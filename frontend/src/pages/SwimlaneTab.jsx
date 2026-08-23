@@ -1,4 +1,8 @@
+import { useNavigate } from 'react-router-dom';
+
 function SwimlaneTab() {
+  const navigate = useNavigate();
+
   return (
     <>
       {/* TopNavBar */}
@@ -14,14 +18,17 @@ function SwimlaneTab() {
           </div>
         </div>
         <nav className="hidden md:flex items-center gap-6 h-full">
-          <button className="h-full text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors font-label-caps text-label-caps px-2">
+          <button 
+            onClick={() => navigate('/flowchart')}
+            className="h-full text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors font-label-caps text-label-caps px-2"
+          >
             Flowchart
           </button>
-          <button className="h-full text-primary dark:text-primary-fixed border-b-2 border-primary dark:border-primary-fixed pb-1 font-label-caps text-label-caps px-2 opacity-80 scale-95 transition-all">
+          <button 
+            onClick={() => navigate('/swimlane')}
+            className="h-full text-primary dark:text-primary-fixed border-b-2 border-primary dark:border-primary-fixed pb-1 font-label-caps text-label-caps px-2 opacity-80 scale-95 transition-all"
+          >
             Swimlane
-          </button>
-          <button className="h-full text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors font-label-caps text-label-caps px-2">
-            Mindmap
           </button>
         </nav>
         <div className="flex items-center gap-3">
@@ -53,15 +60,15 @@ function SwimlaneTab() {
               <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
               <span className="font-label-caps text-label-caps">New Workflow</span>
             </a>
-            <a className="flex items-center gap-3 p-3 text-on-surface-variant dark:text-surface-variant hover:bg-surface-variant dark:hover:bg-inverse-surface hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors rounded-lg" href="#">
+            <a className="flex items-center gap-3 p-3 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors rounded-lg" href="#">
               <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 0" }}>account_tree</span>
               <span className="font-label-caps text-label-caps">Saved Logic</span>
             </a>
-            <a className="flex items-center gap-3 p-3 text-on-surface-variant dark:text-surface-variant hover:bg-surface-variant dark:hover:bg-inverse-surface hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors rounded-lg" href="#">
+            <a className="flex items-center gap-3 p-3 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors rounded-lg" href="#">
               <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 0" }}>dashboard_customize</span>
               <span className="font-label-caps text-label-caps">Templates</span>
             </a>
-            <a className="flex items-center gap-3 p-3 text-on-surface-variant dark:text-surface-variant hover:bg-surface-variant dark:hover:bg-inverse-surface hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors rounded-lg" href="#">
+            <a className="flex items-center gap-3 p-3 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high transition-colors rounded-lg" href="#">
               <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 0" }}>settings</span>
               <span className="font-label-caps text-label-caps">Settings</span>
             </a>
@@ -117,7 +124,6 @@ function SwimlaneTab() {
                     </div>
                     <h3 className="font-headline-md text-headline-md text-on-surface mb-2">Document Review</h3>
                     <p className="font-body-md text-body-md text-on-surface-variant">Verify I-9 and W-4 submissions from candidate portal.</p>
-                    {/* Connector anchor point right */}
                     <div className="absolute right-[-6px] top-1/2 -translate-y-1/2 w-3 h-3 bg-surface-container-lowest border-2 border-outline-variant rounded-full z-20"></div>
                   </div>
                 </div>
@@ -139,9 +145,7 @@ function SwimlaneTab() {
                     </div>
                     <h3 className="font-headline-md text-headline-md text-on-surface mb-2">Finalize Setup</h3>
                     <p className="font-body-md text-body-md text-on-surface-variant">Provision Google Workspace and Slack accounts via API.</p>
-                    {/* Connector anchor point left */}
                     <div className="absolute left-[-6px] top-1/2 -translate-y-1/2 w-3 h-3 bg-primary border-2 border-surface-container-lowest rounded-full z-20"></div>
-                    {/* Connector anchor point right */}
                     <div className="absolute right-[-6px] top-1/2 -translate-y-1/2 w-3 h-3 bg-surface-container-lowest border-2 border-outline-variant rounded-full z-20"></div>
                   </div>
                 </div>
@@ -161,18 +165,16 @@ function SwimlaneTab() {
                     </div>
                     <h3 className="font-headline-md text-headline-md text-on-surface mb-2">Login & Orientation</h3>
                     <p className="font-body-md text-body-md text-on-surface-variant">First login and complete security training modules.</p>
-                    {/* Connector anchor point left */}
                     <div className="absolute left-[-6px] top-1/2 -translate-y-1/2 w-3 h-3 bg-surface-container-lowest border-2 border-outline-variant rounded-full z-20"></div>
                   </div>
                 </div>
               </div>
 
-              {/* Simulated Connectors (CSS lines connecting the cards across lanes) */}
-              {/* Connector 1 to 2 */}
+              {/* Simulated Connectors */}
               <div className="connector-line left-[448px] top-[140px] w-[64px] h-[190px] border-l-0 border-r-2 rounded-br-lg"></div>
               <div className="connector-line left-[512px] top-[330px] w-[64px] h-[0px] border-l-0 border-b-2"></div>
               <div className="connector-arrow left-[570px] top-[328px]"></div>
-              {/* Connector 2 to 3 */}
+              
               <div className="connector-line left-[832px] top-[330px] w-[64px] h-[180px] border-l-0 border-r-2 rounded-br-lg"></div>
               <div className="connector-line left-[896px] top-[510px] w-[64px] h-[0px] border-l-0 border-b-2"></div>
               <div className="connector-arrow left-[954px] top-[508px]"></div>

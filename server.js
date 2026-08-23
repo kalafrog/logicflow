@@ -1,5 +1,5 @@
 const express = require('express');
-const cors = require('cors'); // 1. Import cors
+const cors = require('cors');
 const Groq = require('groq-sdk');
 const path = require('path');
 require('dotenv').config();
@@ -9,7 +9,7 @@ const port = process.env.PORT || 3000;
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-app.use(cors()); // 2. Enable cors for all routes
+app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -21,14 +21,21 @@ app.post('/api/generate', async (req, res) => {
             messages: [
                 {
                     role: "system",
-                    content: "You are an expert software architect. Given a user request, generate a valid Mermaid.js flowchart code representation (graph TD) of the workflow. Return ONLY valid Mermaid syntax inside a code block or plain text without markdown wrappers if possible, or ensure it can be parsed cleanly."
+                    content: `You are an expert workflow architect and business process analyst.
+Given an operational document, procedure, or text prompt, analyze the core business logic and create a step-by-step flowchart in valid Mermaid.js syntax (graph TD).
+
+RULES:
+1. Extract actual real-world operational steps, actions, and decision points.
+2. DO NOT analyze the file format, string characters, or technical text structure itself.
+3. Keep node labels short, concise, and action-oriented (e.g., "Receive Order", "Check Payment Status?").
+4. Output ONLY valid Mermaid flowchart code. Do NOT wrap in markdown code blocks (\`\`\`) or add conversational commentary.`
                 },
                 {
                     role: "user",
                     content: prompt
                 }
             ],
-            model: "openai/gpt-oss-20b",
+            model: "llama-3.3-70b-versatile",
             temperature: 0.2,
         });
 

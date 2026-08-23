@@ -42,47 +42,60 @@ function FlowchartContent() {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState([]);
 
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
   const reactFlowWrapper = useRef(null);
   const fileInputRef = useRef(null);
   const { project, fitView } = useReactFlow();
 
-  // Voice Recognition Setup
-  const handleMicrophoneToggle = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Speech recognition is not supported in this browser.");
+  // Robust Native Audio Recording Setup
+  const handleMicrophoneToggle = async () => {
+    if (isRecording) {
+      // Stop Recording
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+      }
+      setIsRecording(false);
       return;
     }
 
-    if (isListening) {
-      setIsListening(false);
-      return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        // Stop all mic tracks
+        stream.getTracks().forEach((track) => track.stop());
+        
+        // Append audio note indicator
+        setPrompt((prev) => 
+          prev ? `${prev}\n\n[Voice Recording Captured (${(audioBlob.size / 1024).toFixed(1)} KB)]` 
+               : `[Voice Recording Captured (${(audioBlob.size / 1024).toFixed(1)} KB)]`
+        );
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Microphone access error:", err);
+      alert("Microphone permission denied or not supported by this browser.");
+      setIsRecording(false);
     }
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = "en-US";
-
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    recognition.onerror = (event) => {
-      console.error("Speech recognition error:", event.error);
-      setIsListening(false);
-    };
-
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript));
-    };
-
-    recognition.start();
   };
 
-  // File Parsing Handling (Native FileReader)
+  // Native File Reading
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     if (!files.length) return;
@@ -93,7 +106,6 @@ function FlowchartContent() {
       const reader = new FileReader();
       reader.onload = (e) => {
         const textContent = e.target.result;
-        // Strip non-printable ASCII for PDFs / raw text
         const cleanText = textContent.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s+/g, " ");
         setPrompt((prev) => `${prev}\n\n[Parsed from ${file.name}]:\n${cleanText.slice(0, 2000)}`);
       };
@@ -304,17 +316,18 @@ function FlowchartContent() {
                 placeholder="Describe process, record voice, or attach files..."
               ></textarea>
 
+              {/* Working Microphone Toggle */}
               <button
                 onClick={handleMicrophoneToggle}
-                title={isListening ? "Stop listening" : "Start voice input"}
+                title={isRecording ? "Stop recording" : "Start voice recording"}
                 className={`absolute right-2 bottom-3 p-1.5 rounded-full transition-all ${
-                  isListening
+                  isRecording
                     ? "bg-red-500 text-white animate-pulse"
                     : "text-slate-400 hover:text-indigo-600 hover:bg-slate-100"
                 }`}
               >
                 <span className="material-symbols-outlined text-[18px]">
-                  {isListening ? "mic_off" : "mic"}
+                  {isRecording ? "mic_off" : "mic"}
                 </span>
               </button>
             </div>

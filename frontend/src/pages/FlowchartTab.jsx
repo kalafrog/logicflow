@@ -30,9 +30,36 @@ function nodeStyle(nodeType) {
     fontWeight: 600,
     color: "#1e293b",
     minWidth: 240,
-    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)"
+    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)",
   };
 }
+
+// Native PDF Stream Text Extraction (No external libraries required)
+const parsePdfFile = async (file) => {
+  const arrayBuffer = await file.arrayBuffer();
+  const decoder = new TextDecoder("latin1");
+  const rawText = decoder.decode(arrayBuffer);
+
+  const textBlocks = rawText.match(/BT[\s\S]*?ET/g) || [];
+  let cleanContent = "";
+
+  textBlocks.forEach((block) => {
+    const matchedStrings = block.match(/\((.*?)\)/g);
+    if (matchedStrings) {
+      matchedStrings.forEach((str) => {
+        cleanContent += str.replace(/[()]/g, "") + " ";
+      });
+    }
+  });
+
+  const result = cleanContent.trim();
+  if (result.length > 20) {
+    return result;
+  }
+
+  // Fallback cleanup if stream blocks are compressed
+  return rawText.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s+/g, " ").slice(0, 3000);
+};
 
 function FlowchartContent() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -52,7 +79,7 @@ function FlowchartContent() {
   const fileInputRef = useRef(null);
   const { project, fitView } = useReactFlow();
 
-  // Universal Microphone Handler
+  // Working Microphone Input Handler
   const handleMicrophoneToggle = async () => {
     if (isRecording) {
       if (recognitionRef.current) {
@@ -77,10 +104,7 @@ function FlowchartContent() {
 
         recognition.onstart = () => setIsRecording(true);
         recognition.onend = () => setIsRecording(false);
-        recognition.onerror = (err) => {
-          console.error("Speech recognition error:", err);
-          setIsRecording(false);
-        };
+        recognition.onerror = () => setIsRecording(false);
 
         recognition.onresult = (event) => {
           const transcript = event.results[0][0].transcript;
@@ -94,7 +118,6 @@ function FlowchartContent() {
       }
     }
 
-    // Direct Browser Audio Recording Fallback (Works on Firefox, Brave, Mobile, Chrome)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -118,13 +141,13 @@ function FlowchartContent() {
       mediaRecorder.start();
       setIsRecording(true);
     } catch (err) {
-      console.error("Microphone access failed:", err);
-      alert("Microphone permission was denied. Please allow microphone access in your browser site settings.");
+      console.error("Microphone access error:", err);
+      alert("Microphone permission denied or unsupported in browser settings.");
       setIsRecording(false);
     }
   };
 
-  // Native Multi-Format File Reader (PDF, TXT, CSV, JSON, Images)
+  // Clean File Parsing (Fixes PDF binary %PDF-1.4 garbage)
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     if (!files.length) return;
@@ -132,16 +155,21 @@ function FlowchartContent() {
     for (const file of files) {
       setAttachedFiles((prev) => [...prev, file.name]);
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const textContent = e.target.result;
-        const cleanText = textContent.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s+/g, " ");
-        setPrompt((prev) => `${prev}\n\n[Parsed from ${file.name}]:\n${cleanText.slice(0, 2000)}`);
-      };
-
-      if (file.type.startsWith("image/")) {
+      if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+        try {
+          const parsedText = await parsePdfFile(file);
+          setPrompt((prev) => `${prev}\n\n[Parsed from ${file.name}]:\n${parsedText.slice(0, 2500)}`);
+        } catch (pdfErr) {
+          console.error("PDF Parsing error:", pdfErr);
+        }
+      } else if (file.type.startsWith("image/")) {
         setPrompt((prev) => `${prev}\n\n[Attached image: ${file.name}]`);
       } else {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const cleanText = e.target.result.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s+/g, " ");
+          setPrompt((prev) => `${prev}\n\n[Parsed from ${file.name}]:\n${cleanText.slice(0, 2500)}`);
+        };
         reader.readAsText(file);
       }
     }
@@ -288,23 +316,11 @@ function FlowchartContent() {
         setEdges(parsedEdges);
         setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
       } else {
-        throw new Error("No valid nodes parsed");
+        throw new Error("No valid workflow nodes could be parsed.");
       }
     } catch (err) {
       console.error(err);
-      setError("AI generation fallback loaded.");
-      const fallbackNodes = [
-        { id: nextId(), type: "default", position: { x: 250, y: 40 }, data: { label: "Document Review", nodeType: "trigger" }, style: nodeStyle("trigger") },
-        { id: nextId(), type: "default", position: { x: 250, y: 150 }, data: { label: "Finalize Setup", nodeType: "action" }, style: nodeStyle("action") },
-        { id: nextId(), type: "default", position: { x: 250, y: 260 }, data: { label: "Login & Orientation", nodeType: "condition" }, style: nodeStyle("condition") },
-      ];
-      const fallbackEdges = [
-        { id: "e1-2", source: fallbackNodes[0].id, target: fallbackNodes[1].id, animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } },
-        { id: "e2-3", source: fallbackNodes[1].id, target: fallbackNodes[2].id, animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } },
-      ];
-      setNodes(fallbackNodes);
-      setEdges(fallbackEdges);
-      setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
+      setError("Failed to generate workflow. Please check your prompt or file content.");
     } finally {
       setLoading(false);
     }
@@ -314,7 +330,6 @@ function FlowchartContent() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
-      {/* Top Header Bar */}
       <header className="bg-white border-b border-slate-200 flex justify-between items-center h-14 px-6 w-full fixed top-0 z-50">
         <div className="flex items-center gap-4">
           <div className="font-bold text-lg text-indigo-600 tracking-tighter shrink-0">
@@ -322,14 +337,12 @@ function FlowchartContent() {
           </div>
           <div className="h-6 w-px bg-slate-200 mx-2"></div>
           <div className="flex items-center gap-2">
-            <span className="font-medium text-sm text-slate-700">Employee Onboarding SOP</span>
+            <span className="font-medium text-sm text-slate-700">Workflow Studio</span>
           </div>
         </div>
       </header>
 
-      {/* Main Workspace */}
       <div className="flex flex-1 pt-14 h-full relative">
-        {/* Left Sidebar Control Panel */}
         <aside className="bg-white border-r border-slate-200 fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 flex flex-col p-4 z-40">
           <div className="mb-4">
             <h2 className="font-bold text-base text-slate-900">Workflow Engine</h2>
@@ -345,7 +358,6 @@ function FlowchartContent() {
                 placeholder="Describe process, record voice, or attach files..."
               ></textarea>
 
-              {/* Working Microphone Toggle */}
               <button
                 onClick={handleMicrophoneToggle}
                 title={isRecording ? "Stop recording" : "Start voice input"}
@@ -361,7 +373,6 @@ function FlowchartContent() {
               </button>
             </div>
 
-            {/* File Attachment Upload Button */}
             <div>
               <input
                 type="file"
@@ -426,7 +437,6 @@ function FlowchartContent() {
           {error && <p className="text-amber-600 text-[10px] mt-2">{error}</p>}
         </aside>
 
-        {/* Interactive Flow Canvas */}
         <main
           ref={reactFlowWrapper}
           className="flex-1 ml-64 relative overflow-hidden bg-[#F8FAFC] h-[calc(100vh-3.5rem)]"

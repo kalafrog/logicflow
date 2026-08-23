@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -34,32 +34,6 @@ function nodeStyle(nodeType) {
   };
 }
 
-// Native PDF Stream Text Extraction
-const parsePdfFile = async (file) => {
-  const arrayBuffer = await file.arrayBuffer();
-  const decoder = new TextDecoder("latin1");
-  const rawText = decoder.decode(arrayBuffer);
-
-  const textBlocks = rawText.match(/BT[\s\S]*?ET/g) || [];
-  let cleanContent = "";
-
-  textBlocks.forEach((block) => {
-    const matchedStrings = block.match(/\((.*?)\)/g);
-    if (matchedStrings) {
-      matchedStrings.forEach((str) => {
-        cleanContent += str.replace(/[()]/g, "") + " ";
-      });
-    }
-  });
-
-  const result = cleanContent.trim();
-  if (result.length > 20) {
-    return result;
-  }
-
-  return rawText.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s+/g, " ").slice(0, 3000);
-};
-
 function FlowchartContent() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -78,7 +52,40 @@ function FlowchartContent() {
   const fileInputRef = useRef(null);
   const { project, fitView } = useReactFlow();
 
-  // Working Microphone Input Handler
+  // Dynamically load PDF.js from CDN to handle compressed stream extraction
+  useEffect(() => {
+    if (!window.pdfjsLib) {
+      const script = document.createElement("script");
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js";
+      script.onload = () => {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+      };
+      document.head.appendChild(script);
+    }
+  }, []);
+
+  // Robust PDF Reader using global pdfjsLib
+  const extractPdfText = async (file) => {
+    if (!window.pdfjsLib) {
+      throw new Error("PDF library is still loading. Please try again in 2 seconds.");
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = "";
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map((item) => item.str).join(" ");
+      fullText += pageText + "\n";
+    }
+
+    return fullText.trim();
+  };
+
+  // Microphone Input Handler
   const handleMicrophoneToggle = async () => {
     if (isRecording) {
       if (recognitionRef.current) {
@@ -146,7 +153,7 @@ function FlowchartContent() {
     }
   };
 
-  // Clean File Reader
+  // Clean File Parsing
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     if (!files.length) return;
@@ -156,18 +163,31 @@ function FlowchartContent() {
 
       if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
         try {
-          const parsedText = await parsePdfFile(file);
-          setPrompt((prev) => `${prev}\n\n[Parsed from ${file.name}]:\n${parsedText.slice(0, 2500)}`);
+          const parsedText = await extractPdfText(file);
+          if (parsedText) {
+            setPrompt((prev) =>
+              prev
+                ? `${prev}\n\nCreate a step-by-step flowchart workflow based on this process document:\n${parsedText}`
+                : `Create a step-by-step flowchart workflow based on this process document:\n${parsedText}`
+            );
+          } else {
+            setError("Could not extract text from PDF. It may be scanned images.");
+          }
         } catch (pdfErr) {
           console.error("PDF Parsing error:", pdfErr);
+          setError("Failed to parse PDF file. Try again.");
         }
       } else if (file.type.startsWith("image/")) {
         setPrompt((prev) => `${prev}\n\n[Attached image: ${file.name}]`);
       } else {
         const reader = new FileReader();
         reader.onload = (e) => {
-          const cleanText = e.target.result.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s+/g, " ");
-          setPrompt((prev) => `${prev}\n\n[Parsed from ${file.name}]:\n${cleanText.slice(0, 2500)}`);
+          const cleanText = e.target.result;
+          setPrompt((prev) =>
+            prev
+              ? `${prev}\n\nCreate a flowchart based on this content:\n${cleanText}`
+              : `Create a flowchart based on this content:\n${cleanText}`
+          );
         };
         reader.readAsText(file);
       }
@@ -283,7 +303,6 @@ function FlowchartContent() {
           if (!visited.has(k)) { orderedKeys.push(k); }
         });
 
-        // Color & Type Parsing Logic
         orderedKeys.forEach((rawKey, index) => {
           const label = nodeMap[rawKey];
           let nType = "action";
@@ -304,7 +323,6 @@ function FlowchartContent() {
           });
         });
 
-        // Dynamic Edge Creation
         rawEdgeMatches.forEach((e, idx) => {
           const srcLabel = nodeMap[e[1]];
           const destLabel = nodeMap[e[2]];
@@ -323,7 +341,6 @@ function FlowchartContent() {
           }
         });
 
-        // Fallback connecting logic if Mermaid edges couldn't map explicitly
         if (parsedEdges.length === 0 && parsedNodes.length > 1) {
           for (let i = 0; i < parsedNodes.length - 1; i++) {
             parsedEdges.push({

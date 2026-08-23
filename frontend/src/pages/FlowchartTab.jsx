@@ -103,7 +103,7 @@ function FlowchartCanvas() {
     setSelectedNode(null);
   };
 
-  // Parses response and guarantees a strict top-to-bottom straight chain layout
+  // Parses backend response and lays nodes strictly top-to-bottom in a straight column
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     setLoading(true);
@@ -127,13 +127,11 @@ function FlowchartCanvas() {
       let parsedEdges = [];
 
       if (nodeMatches.length > 0) {
-        // Map raw identifiers to node labels
         const nodeMap = {};
         nodeMatches.forEach(m => {
           nodeMap[m[1]] = m[2];
         });
 
-        // Build adjacency list & find the starting root node (node with no incoming edges)
         const adj = {};
         const incoming = {};
         nodeMatches.forEach(m => {
@@ -152,7 +150,6 @@ function FlowchartCanvas() {
 
         let currentNodeKey = Object.keys(nodeMap).find(k => incoming[k] === 0) || Object.keys(nodeMap)[0];
         
-        // Traverse linearly to maintain strict step-by-step order
         let orderedKeys = [];
         let visited = new Set();
         while (currentNodeKey && !visited.has(currentNodeKey) && nodeMap[currentNodeKey]) {
@@ -162,22 +159,19 @@ function FlowchartCanvas() {
           currentNodeKey = nexts && nexts.length > 0 ? nexts[0] : null;
         }
 
-        // Include any remaining missed nodes safely
         Object.keys(nodeMap).forEach(k => {
           if (!visited.has(k)) {
             orderedKeys.push(k);
           }
         });
 
-        const startX = 250;
-        const startY = 60;
+        const fixedX = 250;
+        const startY = 40;
         const gapY = 110;
-        const generatedIdMap = {};
 
         orderedKeys.forEach((rawKey, index) => {
           const label = nodeMap[rawKey];
           const uniqueId = nextId();
-          generatedIdMap[rawKey] = uniqueId;
 
           let nType = "action";
           const lower = label.toLowerCase();
@@ -188,13 +182,12 @@ function FlowchartCanvas() {
           parsedNodes.push({
             id: uniqueId,
             type: "default",
-            position: { x: startX, y: startY + (index * gapY) },
+            position: { x: fixedX, y: startY + (index * gapY) }, // Strict vertical increment
             data: { label, nodeType: nType },
             style: nodeStyle(nType)
           });
         });
 
-        // Connect sequential items straight down
         for (let i = 0; i < parsedNodes.length - 1; i++) {
           parsedEdges.push({
             id: `e_${i}_${i+1}`,
@@ -218,9 +211,9 @@ function FlowchartCanvas() {
       console.error(err);
       setError("AI generation fallback loaded.");
       const fallbackNodes = [
-        { id: nextId(), type: "default", position: { x: 250, y: 60 }, data: { label: `Trigger: ${prompt}`, nodeType: "trigger" }, style: nodeStyle("trigger") },
-        { id: nextId(), type: "default", position: { x: 250, y: 170 }, data: { label: "Process Request", nodeType: "action" }, style: nodeStyle("action") },
-        { id: nextId(), type: "default", position: { x: 250, y: 280 }, data: { label: "Valid?", nodeType: "condition" }, style: nodeStyle("condition") },
+        { id: nextId(), type: "default", position: { x: 250, y: 40 }, data: { label: `Trigger: ${prompt}`, nodeType: "trigger" }, style: nodeStyle("trigger") },
+        { id: nextId(), type: "default", position: { x: 250, y: 150 }, data: { label: "Process Request", nodeType: "action" }, style: nodeStyle("action") },
+        { id: nextId(), type: "default", position: { x: 250, y: 260 }, data: { label: "Valid?", nodeType: "condition" }, style: nodeStyle("condition") },
       ];
       const fallbackEdges = [
         { id: 'e1-2', source: fallbackNodes[0].id, target: fallbackNodes[1].id, animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } },
@@ -251,7 +244,7 @@ function FlowchartCanvas() {
           </div>
         </div>
 
-        {/* Navigation Tabs (Flowchart & Swimlane Only) */}
+        {/* Navigation Tabs */}
         <nav className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/60">
           <button 
             onClick={() => setActiveTab('flowchart')}

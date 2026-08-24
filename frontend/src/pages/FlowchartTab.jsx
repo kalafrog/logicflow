@@ -11,9 +11,9 @@ import ReactFlow, {
   Position,
   MarkerType,
 } from "reactflow";
+import dagre from "dagre";
 import "reactflow/dist/style.css";
 
-// --- Custom Styled ReactFlow Node Components ---
 const CustomNode = ({ data, selected }) => {
   const isTrigger = data.nodeType === "trigger";
   const isCondition = data.nodeType === "condition";
@@ -57,9 +57,7 @@ const CustomNode = ({ data, selected }) => {
   );
 };
 
-const nodeTypes = {
-  custom: CustomNode,
-};
+const nodeTypes = { custom: CustomNode };
 
 const PALETTE = [
   { type: "trigger", label: "Trigger / Terminal", icon: "bolt", color: "#6366f1" },
@@ -69,6 +67,41 @@ const PALETTE = [
 
 let idCounter = 1;
 const nextId = () => `node_${idCounter++}`;
+
+const getLayoutedElements = (nodes, edges, direction = "TB") => {
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+  const nodeWidth = 240;
+  const nodeHeight = 80;
+
+  dagreGraph.setGraph({ rankdir: direction, ranksep: 80, nodesep: 60 });
+
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  const layoutedNodes = nodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    return {
+      ...node,
+      targetPosition: Position.Top,
+      sourcePosition: Position.Bottom,
+      position: {
+        x: nodeWithPosition.x - nodeWidth / 2,
+        y: nodeWithPosition.y - nodeHeight / 2,
+      },
+    };
+  });
+
+  return { nodes: layoutedNodes, edges };
+};
 
 function FlowchartContent() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -260,77 +293,63 @@ function FlowchartContent() {
       const edgeRegex = /([A-Za-z0-9_]+)\s*-->\s*(?:\|([^|]+)\|)?\s*([A-Za-z0-9_]+)/g;
       const rawEdges = [...mermaidText.matchAll(edgeRegex)];
 
-      const parsedNodes = [];
-      const parsedEdges = [];
       const keys = Object.keys(nodeMap);
 
-      const levelMap = {};
-      const xOffsetMap = {};
-
-      keys.forEach((key, index) => {
+      const parsedNodes = keys.map((key) => {
         const label = nodeMap[key];
         const lower = label.toLowerCase();
         let nType = "action";
-        if (lower.includes("start") || lower.includes("end") || index === 0 || index === keys.length - 1) {
+        if (lower.includes("start") || lower.includes("end") || lower.includes("confirm") || lower.includes("email")) {
           nType = "trigger";
-        } else if (label.includes("?") || lower.includes("check") || lower.includes("available") || lower.includes("verify")) {
+        } else if (label.includes("?") || lower.includes("check") || lower.includes("stock") || lower.includes("retry")) {
           nType = "condition";
         }
 
-        const level = levelMap[key] !== undefined ? levelMap[key] : index;
-        const xPos = 280 + (xOffsetMap[key] || 0);
-        const yPos = 40 + level * 130;
-
-        parsedNodes.push({
+        return {
           id: key,
           type: "custom",
-          position: { x: xPos, y: yPos },
+          position: { x: 0, y: 0 },
           data: { label, nodeType: nType },
-        });
-
-        const outgoing = rawEdges.filter((e) => e[1] === key);
-        if (outgoing.length > 1) {
-          outgoing.forEach((edge, i) => {
-            const targetKey = edge[3];
-            levelMap[targetKey] = level + 1;
-            xOffsetMap[targetKey] = i === 0 ? -160 : 160;
-          });
-        }
+        };
       });
 
-      rawEdges.forEach((e, idx) => {
+      const parsedEdges = rawEdges.map((e, idx) => {
         const source = e[1];
         const branchLabel = e[2] || "";
         const target = e[3];
 
-        if (nodeMap[source] && nodeMap[target]) {
-          const isNegative = branchLabel.toLowerCase().includes("no") || branchLabel.toLowerCase().includes("not");
-          parsedEdges.push({
-            id: `e_${source}_${target}_${idx}`,
-            source,
-            target,
-            label: branchLabel,
-            type: "smoothstep",
-            animated: true,
-            style: { stroke: isNegative ? "#ef4444" : "#6366f1", strokeWidth: 2.5 },
-            markerEnd: { type: MarkerType.ArrowClosed, color: isNegative ? "#ef4444" : "#6366f1" },
-            labelStyle: { fill: isNegative ? "#dc2626" : "#4f46e5", fontWeight: 800, fontSize: 11 },
-            labelBgPadding: [6, 4],
-            labelBgBorderRadius: 6,
-            labelBgStyle: { fill: "#ffffff", color: "#fff", fillOpacity: 0.9 },
-          });
-        }
+        const lowerBranch = branchLabel.toLowerCase();
+        const isNegative = lowerBranch.includes("no") || lowerBranch.includes("fail") || lowerBranch.includes("out of stock") || lowerBranch.includes("cancel");
+
+        return {
+          id: `e_${source}_${target}_${idx}`,
+          source,
+          target,
+          label: branchLabel,
+          type: "smoothstep",
+          animated: true,
+          style: { stroke: isNegative ? "#ef4444" : "#6366f1", strokeWidth: 2.5 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: isNegative ? "#ef4444" : "#6366f1" },
+          labelStyle: { fill: isNegative ? "#dc2626" : "#4f46e5", fontWeight: 800, fontSize: 11 },
+          labelBgPadding: [6, 4],
+          labelBgBorderRadius: 6,
+          labelBgStyle: { fill: "#ffffff", fillOpacity: 0.95 },
+        };
       });
 
       if (parsedNodes.length > 0) {
-        setNodes(parsedNodes);
-        setEdges(parsedEdges);
+        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+          parsedNodes,
+          parsedEdges,
+          "TB"
+        );
+
+        setNodes(layoutedNodes);
+        setEdges(layoutedEdges);
         setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
-      } else {
-        throw new Error("No valid workflow nodes parsed.");
       }
     } catch (err) {
-      setError("Failed to generate workflow. Check API response.");
+      setError("Failed to generate correct flow logic.");
     } finally {
       setLoading(false);
     }

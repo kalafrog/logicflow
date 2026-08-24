@@ -13,26 +13,55 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 
+// --- Custom Animations ---
+const customStyles = `
+  @keyframes popIn {
+    0% { opacity: 0; transform: scale(0.85) translateY(15px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .animate-pop-in {
+    animation: popIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  @keyframes glowPulse {
+    0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
+    70% { box-shadow: 0 0 0 15px rgba(99, 102, 241, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+  }
+  .animate-glow-pulse {
+    animation: glowPulse 2.5s infinite;
+  }
+  .react-flow__edge-path {
+    stroke-linecap: round;
+  }
+`;
+
 const CustomNode = ({ data, selected }) => {
   const isTrigger = data.nodeType === "trigger";
   const isCondition = data.nodeType === "condition";
-  const status = data.status || "default"; // 'positive', 'negative', 'default'
+  const status = data.status || "default";
 
-  let borderColor = "border-slate-300";
-  let headerBg = "bg-slate-800 text-white";
+  let borderColor, headerBg, bodyBg;
 
   if (status === "positive") {
-    borderColor = "border-emerald-500";
-    headerBg = "bg-emerald-600 text-white";
+    borderColor = "border-emerald-400";
+    headerBg = "bg-gradient-to-r from-emerald-500 to-emerald-600";
+    bodyBg = "bg-gradient-to-b from-white to-emerald-50";
   } else if (status === "negative") {
-    borderColor = "border-red-500";
-    headerBg = "bg-red-600 text-white";
+    borderColor = "border-red-400";
+    headerBg = "bg-gradient-to-r from-red-500 to-red-600";
+    bodyBg = "bg-gradient-to-b from-white to-red-50";
   } else if (isTrigger) {
-    borderColor = "border-indigo-500";
-    headerBg = "bg-indigo-600 text-white";
+    borderColor = "border-indigo-400";
+    headerBg = "bg-gradient-to-r from-indigo-500 to-indigo-600";
+    bodyBg = "bg-gradient-to-b from-white to-indigo-50";
   } else if (isCondition) {
-    borderColor = "border-amber-500";
-    headerBg = "bg-amber-500 text-white";
+    borderColor = "border-amber-400";
+    headerBg = "bg-gradient-to-r from-amber-500 to-amber-600";
+    bodyBg = "bg-gradient-to-b from-white to-amber-50";
+  } else {
+    borderColor = "border-slate-300";
+    headerBg = "bg-gradient-to-r from-slate-700 to-slate-800";
+    bodyBg = "bg-gradient-to-b from-white to-slate-50";
   }
 
   const iconName = status === "positive"
@@ -47,21 +76,32 @@ const CustomNode = ({ data, selected }) => {
 
   return (
     <div
-      className={`bg-white rounded-xl shadow-lg border-2 ${borderColor} transition-all duration-200 overflow-hidden min-w-[220px] max-w-[280px] ${
-        selected ? "ring-4 ring-indigo-200 scale-105" : ""
-      }`}
+      className={`animate-pop-in ${bodyBg} rounded-2xl shadow-lg hover:shadow-2xl border-[2.5px] ${borderColor} transition-all duration-300 ease-out overflow-hidden min-w-[220px] max-w-[280px] group ${
+        selected ? "ring-4 ring-indigo-300/50 scale-105" : "hover:-translate-y-1.5"
+      } ${isTrigger ? "animate-glow-pulse" : ""}`}
     >
-      <Handle type="target" position={Position.Top} className="!bg-indigo-500 !w-3 !h-3" />
-      <div className={`px-3 py-1.5 flex items-center justify-between text-[11px] font-bold tracking-wider uppercase ${headerBg}`}>
-        <div className="flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-[14px]">{iconName}</span>
-          <span>{data.nodeType || "Step"}</span>
+      <Handle 
+        type="target" 
+        position={Position.Top} 
+        className={`!w-3.5 !h-3.5 !border-2 !border-white transition-transform group-hover:scale-125 ${isTrigger ? '!bg-indigo-500' : '!bg-slate-400'}`} 
+      />
+      
+      <div className={`px-4 py-2 flex items-center justify-between text-[11px] font-extrabold tracking-widest uppercase shadow-sm ${headerBg}`}>
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-[16px] text-white/90 drop-shadow-md">{iconName}</span>
+          <span className="text-white/95 drop-shadow-sm">{data.nodeType || "Step"}</span>
         </div>
       </div>
-      <div className="p-3 text-xs font-semibold text-slate-800 text-center leading-relaxed">
+      
+      <div className="p-4 text-xs font-semibold text-slate-700 text-center leading-relaxed">
         {data.label}
       </div>
-      <Handle type="source" position={Position.Bottom} className="!bg-indigo-500 !w-3 !h-3" />
+
+      <Handle 
+        type="source" 
+        position={Position.Bottom} 
+        className={`!w-3.5 !h-3.5 !border-2 !border-white transition-transform group-hover:scale-125 ${isTrigger ? '!bg-indigo-500' : '!bg-slate-400'}`}
+      />
     </div>
   );
 };
@@ -190,7 +230,7 @@ function FlowchartContent() {
   };
 
   const onConnect = useCallback(
-    (params) => setEdges((eds) => addEdge({ ...params, type: "smoothstep", animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } }, eds)),
+    (params) => setEdges((eds) => addEdge({ ...params, type: "smoothstep", animated: true, style: { stroke: "#6366f1", strokeWidth: 3 } }, eds)),
     [setEdges]
   );
 
@@ -296,7 +336,7 @@ function FlowchartContent() {
         if (children.length > 1) {
           children.forEach((cEdge, idx) => {
             const childKey = cEdge[3];
-            const offset = idx === 0 ? -200 : 200;
+            const offset = idx === 0 ? -220 : 220; // Increased offset slightly for wider nodes
             xOffsets[childKey] = (xOffsets[parentKey] || 0) + offset;
           });
         }
@@ -321,7 +361,7 @@ function FlowchartContent() {
 
         const depth = levels[key] !== undefined ? levels[key] : index;
         const xPos = 300 + (xOffsets[key] || 0);
-        const yPos = 40 + depth * 130;
+        const yPos = 40 + depth * 140; // increased depth spacing slightly
 
         return {
           id: key,
@@ -340,9 +380,19 @@ function FlowchartContent() {
         const isPositive = lowerBranch.includes("yes") || lowerBranch.includes("accept") || lowerBranch.includes("approve") || lowerBranch.includes("confirm") || lowerBranch.includes("success");
         const isNegative = lowerBranch.includes("no") || lowerBranch.includes("reject") || lowerBranch.includes("fail") || lowerBranch.includes("cancel") || lowerBranch.includes("out of stock");
 
-        let strokeColor = "#6366f1";
-        if (isPositive) strokeColor = "#10b981";
-        if (isNegative) strokeColor = "#ef4444";
+        let strokeColor = "#94a3b8"; // slate-400 default
+        let edgeAnimated = false; // Add motion only to specific branches if desired, or all
+
+        if (isPositive) {
+          strokeColor = "#10b981"; // emerald-500
+          edgeAnimated = true;
+        } else if (isNegative) {
+          strokeColor = "#ef4444"; // red-500
+          edgeAnimated = true;
+        } else {
+            strokeColor = "#6366f1"; // indigo-500 for normal flow
+            edgeAnimated = true;
+        }
 
         return {
           id: `e_${source}_${target}_${idx}`,
@@ -350,20 +400,20 @@ function FlowchartContent() {
           target,
           label: branchLabel,
           type: "smoothstep",
-          animated: true,
-          style: { stroke: strokeColor, strokeWidth: 2.5 },
+          animated: edgeAnimated,
+          style: { stroke: strokeColor, strokeWidth: 3 },
           markerEnd: { type: MarkerType.ArrowClosed, color: strokeColor },
-          labelStyle: { fill: strokeColor, fontWeight: 800, fontSize: 11 },
-          labelBgPadding: [6, 4],
-          labelBgBorderRadius: 6,
-          labelBgStyle: { fill: "#ffffff", fillOpacity: 0.95 },
+          labelStyle: { fill: strokeColor, fontWeight: 800, fontSize: 12 },
+          labelBgPadding: [8, 6],
+          labelBgBorderRadius: 8,
+          labelBgStyle: { fill: "#ffffff", fillOpacity: 0.95, stroke: strokeColor, strokeWidth: 1.5 },
         };
       });
 
       if (parsedNodes.length > 0) {
         setNodes(parsedNodes);
         setEdges(parsedEdges);
-        setTimeout(() => fitView({ padding: 0.25, duration: 400 }), 50);
+        setTimeout(() => fitView({ padding: 0.25, duration: 600 }), 50);
       }
     } catch (err) {
       setError("Failed to generate correct flow logic.");
@@ -375,182 +425,195 @@ function FlowchartContent() {
   const hasWorkflow = nodes.length > 0;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
-      <header className="bg-white border-b border-slate-200 flex justify-between items-center h-14 px-6 w-full fixed top-0 z-50">
-        <div className="flex items-center gap-4">
-          <div className="font-bold text-lg text-indigo-600 tracking-tighter shrink-0">
-            LogicFlow AI
+    <>
+      <style>{customStyles}</style>
+      <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 flex justify-between items-center h-14 px-6 w-full fixed top-0 z-50">
+          <div className="flex items-center gap-4">
+            <div className="font-extrabold text-lg bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-500 tracking-tighter shrink-0">
+              LogicFlow AI
+            </div>
+            <div className="h-6 w-px bg-slate-200 mx-2"></div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-sm text-slate-700">Workflow Studio</span>
+            </div>
           </div>
-          <div className="h-6 w-px bg-slate-200 mx-2"></div>
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-sm text-slate-700">Workflow Studio</span>
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <div className="flex flex-1 pt-14 h-full relative">
-        <aside className="bg-white border-r border-slate-200 fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-72 flex flex-col p-4 z-40">
-          <div className="mb-3">
-            <h2 className="font-bold text-base text-slate-900">Workflow Engine</h2>
-            <p className="text-xs text-slate-500">AI Logic Extraction</p>
-          </div>
-
-          <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-1">
-            <div className="relative">
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                className="w-full h-28 border border-slate-200 rounded-xl p-2.5 pr-8 text-xs text-slate-800 outline-none focus:border-indigo-500 resize-none bg-slate-50"
-                placeholder="Describe process, record voice, or attach files..."
-              ></textarea>
-
-              <button
-                onClick={handleMicrophoneToggle}
-                title={isRecording ? "Stop recording" : "Start voice input"}
-                className={`absolute right-2 bottom-3 p-1.5 rounded-full transition-all ${
-                  isRecording
-                    ? "bg-red-500 text-white animate-pulse"
-                    : "text-slate-400 hover:text-indigo-600 hover:bg-slate-100"
-                }`}
-              >
-                <span className="material-symbols-outlined text-[18px]">
-                  {isRecording ? "mic_off" : "mic"}
-                </span>
-              </button>
+        <div className="flex flex-1 pt-14 h-full relative">
+          <aside className="bg-white border-r border-slate-200 fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-72 flex flex-col p-4 z-40 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+            <div className="mb-3">
+              <h2 className="font-bold text-base text-slate-900">Workflow Engine</h2>
+              <p className="text-xs text-slate-500">AI Logic Extraction</p>
             </div>
 
-            <div>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                multiple
-                accept=".pdf,.txt,.csv,.json,image/*"
-                className="hidden"
-              />
+            <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
+              <div className="relative group">
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  className="w-full h-28 border border-slate-200 rounded-2xl p-3 pr-10 text-xs text-slate-800 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 resize-none bg-slate-50 transition-all"
+                  placeholder="Describe process, record voice, or attach files..."
+                ></textarea>
+
+                <button
+                  onClick={handleMicrophoneToggle}
+                  title={isRecording ? "Stop recording" : "Start voice input"}
+                  className={`absolute right-2 bottom-3 p-2 rounded-full transition-all ${
+                    isRecording
+                      ? "bg-red-500 text-white animate-pulse shadow-md shadow-red-200"
+                      : "text-slate-400 hover:text-indigo-600 hover:bg-slate-200/50"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    {isRecording ? "mic_off" : "mic"}
+                  </span>
+                </button>
+              </div>
+
+              <div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  multiple
+                  accept=".pdf,.txt,.csv,.json,image/*"
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50/30 py-2.5 rounded-2xl text-slate-600 text-xs font-bold flex items-center justify-center gap-2 transition-all hover:text-indigo-600 group"
+                >
+                  <span className="material-symbols-outlined text-[18px] group-hover:-translate-y-0.5 transition-transform">attach_file</span>
+                  Attach Files
+                </button>
+
+                {attachedFiles.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {attachedFiles.map((name, i) => (
+                      <span
+                        key={i}
+                        className="text-[10px] font-medium bg-slate-100 border border-slate-200 text-slate-600 px-2 py-1 rounded-lg truncate max-w-full"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full border border-dashed border-slate-300 hover:border-indigo-500 bg-slate-50 hover:bg-indigo-50/50 py-2 rounded-xl text-slate-600 text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+                onClick={handleGenerate}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold py-3 rounded-2xl transition-all shadow-md shadow-indigo-200 flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0"
               >
-                <span className="material-symbols-outlined text-[16px]">attach_file</span>
-                Attach Files (PDF, Images, Text)
+                <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin' : ''}`}>
+                  {loading ? "sync" : "magic_button"}
+                </span>
+                {loading ? "Synthesizing..." : "Generate Workflow"}
               </button>
 
-              {attachedFiles.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {attachedFiles.map((name, i) => (
-                    <span
-                      key={i}
-                      className="text-[10px] bg-slate-100 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-md truncate max-w-full"
-                    >
-                      {name}
-                    </span>
-                  ))}
+              {recommendations.length > 0 && (
+                <div className="p-3.5 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl shadow-sm">
+                  <div className="flex items-center gap-1.5 mb-2 text-amber-800 font-extrabold text-xs">
+                    <span className="material-symbols-outlined text-[16px] text-amber-500">lightbulb</span>
+                    AI Recommendations
+                  </div>
+                  <ul className="text-[11px] font-medium text-amber-900/80 flex flex-col gap-1.5 list-disc pl-4">
+                    {recommendations.map((rec, i) => (
+                      <li key={i}>{rec}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
+
+              <div className="h-px bg-slate-100 my-1"></div>
+
+              <div>
+                <h3 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-3">Drag to Add</h3>
+                <div className="flex flex-col gap-2.5">
+                  {PALETTE.map((n) => (
+                    <div
+                      key={n.type}
+                      draggable
+                      onDragStart={(e) => onDragStart(e, n.type)}
+                      className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl border-2 border-slate-100 bg-white cursor-grab hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5 transition-all text-xs font-bold text-slate-700 active:cursor-grabbing"
+                    >
+                      <span className="material-symbols-outlined text-[18px]" style={{ color: n.color }}>{n.icon}</span>
+                      {n.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <button
-              onClick={handleGenerate}
-              disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2.5 rounded-xl transition-all shadow-sm flex justify-center items-center gap-2 disabled:opacity-50"
-            >
-              <span className="material-symbols-outlined text-[16px]">magic_button</span>
-              {loading ? "Synthesizing..." : "Generate Workflow"}
-            </button>
+            {error && (
+              <div className="animate-pop-in mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-[11px] font-semibold flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px]">error</span>
+                {error}
+              </div>
+            )}
+          </aside>
 
-            {recommendations.length > 0 && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                <div className="flex items-center gap-1.5 mb-1.5 text-amber-800 font-bold text-xs">
-                  <span className="material-symbols-outlined text-[16px]">lightbulb</span>
-                  AI Recommendations
+          <main
+            ref={reactFlowWrapper}
+            className="flex-1 ml-72 relative overflow-hidden bg-slate-50/50 h-[calc(100vh-3.5rem)]"
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+          >
+            {!hasWorkflow && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 pointer-events-none z-10 text-center p-6 animate-pop-in">
+                <div className="w-16 h-16 rounded-3xl bg-white border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                  <span className="material-symbols-outlined text-[32px]">account_tree</span>
                 </div>
-                <ul className="text-[11px] text-amber-900 flex flex-col gap-1.5 list-disc pl-4">
-                  {recommendations.map((rec, i) => (
-                    <li key={i}>{rec}</li>
-                  ))}
-                </ul>
+                <div>
+                  <h3 className="font-extrabold text-slate-800 text-sm mb-1">Canvas is empty</h3>
+                  <p className="text-xs text-slate-500 max-w-xs font-medium">Use voice input, upload documents, or drag nodes onto the canvas to begin.</p>
+                </div>
               </div>
             )}
 
-            <div className="h-px bg-slate-200 my-1"></div>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onNodeClick={onNodeClick}
+              fitView
+              className="w-full h-full"
+            >
+              <Background gap={24} color="#94a3b8" variant="dots" size={1.5} className="opacity-40" />
+              <Controls className="bg-white/90 backdrop-blur-sm border-none shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-xl p-1 !m-6 overflow-hidden" />
+            </ReactFlow>
 
-            <div>
-              <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Drag to Add Node</h3>
-              <div className="flex flex-col gap-2">
-                {PALETTE.map((n) => (
-                  <div
-                    key={n.type}
-                    draggable
-                    onDragStart={(e) => onDragStart(e, n.type)}
-                    className="flex items-center gap-3 px-3 py-2 rounded-xl border bg-white cursor-grab hover:border-indigo-400 transition-all text-xs font-semibold text-slate-700 shadow-sm"
-                  >
-                    <span className="material-symbols-outlined text-[16px]" style={{ color: n.color }}>{n.icon}</span>
-                    {n.label}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {error && <p className="text-amber-600 text-[10px] mt-2">{error}</p>}
-        </aside>
-
-        <main
-          ref={reactFlowWrapper}
-          className="flex-1 ml-72 relative overflow-hidden bg-[#F8FAFC] h-[calc(100vh-3.5rem)]"
-          onDrop={onDrop}
-          onDragOver={onDragOver}
-        >
-          {!hasWorkflow && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none z-10 text-center p-6">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-inner">
-                <span className="material-symbols-outlined text-[28px]">account_tree</span>
-              </div>
-              <h3 className="font-bold text-slate-800 text-sm">No active workflow found</h3>
-              <p className="text-xs text-slate-500 max-w-xs">Use voice input, upload documents, or drag nodes onto the canvas.</p>
-            </div>
-          )}
-
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={nodeTypes}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onNodeClick={onNodeClick}
-            fitView
-            className="w-full h-full"
-          >
-            <Background gap={20} color="#cbd5e1" variant="dots" />
-            <Controls className="bg-white border border-slate-200 rounded-xl shadow-md p-1" />
-          </ReactFlow>
-
-          {selectedNode && (
-            <div className="absolute top-6 right-6 w-64 bg-white border border-slate-200 rounded-xl shadow-xl p-4 z-30">
-              <div className="flex justify-between items-center mb-2">
-                <h4 className="font-bold text-slate-800 text-xs">Edit Node</h4>
-                <button onClick={() => setSelectedNode(null)} className="text-slate-400 hover:text-slate-600">
-                  <span className="material-symbols-outlined text-[16px]">close</span>
+            {selectedNode && (
+              <div className="absolute top-6 right-6 w-72 bg-white/90 backdrop-blur-md border border-slate-200/60 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-5 z-30 animate-pop-in">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider">Edit Node</h4>
+                  <button onClick={() => setSelectedNode(null)} className="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full p-1 transition-colors">
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                </div>
+                <input
+                  value={editLabel}
+                  onChange={(e) => setEditLabel(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium mb-4 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all"
+                  autoFocus
+                />
+                <button
+                  onClick={saveNodeLabel}
+                  className="w-full bg-slate-900 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-indigo-600 transition-colors shadow-sm"
+                >
+                  Save Changes
                 </button>
               </div>
-              <input
-                value={editLabel}
-                onChange={(e) => setEditLabel(e.target.value)}
-                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs mb-3 outline-none focus:border-indigo-500"
-              />
-              <button
-                onClick={saveNodeLabel}
-                className="w-full bg-indigo-600 text-white py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700"
-              >
-                Save
-              </button>
-            </div>
-          )}
-        </main>
+            )}
+          </main>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

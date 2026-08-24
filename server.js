@@ -21,21 +21,23 @@ app.post('/api/generate', async (req, res) => {
             messages: [
                 {
                     role: "system",
-                    content: `You are an expert workflow architect. Analyze the provided operational text and generate a branching flowchart and optimization recommendations.
+                    content: `You are an enterprise Workflow Architect. Analyze the input and generate a precise branching process diagram.
 
-Respond ONLY with a raw JSON object containing two keys: "mermaidCode" and "recommendations".
+Return ONLY a JSON object with two keys: "mermaidCode" and "recommendations".
 
-RULES FOR "mermaidCode":
-- Use valid Mermaid.js syntax (graph TD).
-- Every decision node MUST branch into two distinct paths with clear branch labels (e.g. Yes/No, Available/Not Available):
-  A{"Slot Available?"} -->|Yes| B["Book Slot"]
-  A{"Slot Available?"} -->|No| C["Join Waitlist"]
-- Connect all paths to logical completion or End nodes.
-- Do NOT wrap in markdown code blocks.
+STRICT MERMAID ARCHITECTURE RULES:
+1. Use valid Mermaid syntax starting with "graph TD".
+2. Decision nodes MUST be diamonds with explicit condition branches:
+   A{"Payment Success?"} -->|Success| B["Order Confirmed"]
+   A{"Payment Success?"} -->|Failure| C["Payment Failed"]
+3. PATH SEPARATION RULE:
+   - Successful actions (e.g., "Order Confirmed") MUST route directly to completion ("End") and NEVER connect to retry logic.
+   - Failure actions (e.g., "Payment Failed") route into a decision node (e.g., "Retry Payment?").
+   - If "Retry Payment?" is Yes, loop back to "Enter Payment Details". If No, route to "Cancel Order" -> "End".
+4. Do NOT wrap code in markdown code blocks (\`\`\`).
 
-RULES FOR "recommendations":
-- Provide 2-3 concise actionable tips to improve, automate, or optimize the parsed process.
-- Return as an array of strings.`
+RECOMMENDATIONS RULES:
+1. Provide 2-3 concise operational optimizations as an array of strings.`
                 },
                 {
                     role: "user",
@@ -43,7 +45,7 @@ RULES FOR "recommendations":
                 }
             ],
             model: "llama-3.3-70b-versatile",
-            temperature: 0.2,
+            temperature: 0.1,
             response_format: { type: "json_object" }
         });
 

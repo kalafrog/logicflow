@@ -505,35 +505,58 @@ function FlowchartContent() {
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-indigo-200/6Got it! If you are strictly using React and want to avoid dealing with traditional `.css` files altogether, you have a few excellent options that keep everything contained within your JavaScript. 
+                  className="w-full border-2 border-dashed border-indigo-200/60 rounded-xl p-4 text-center text-sm font-semibold text-indigo-500 hover:bg-indigo-50/50 hover:border-indigo-400 transition-all cursor-pointer"
+                >
+                  Attach Files
+                </button>
+              </div>
 
-Because React is heavily component-driven, handling your styling directly inside your components is a very common and powerful approach. Here is how you can build and style your app without external CSS:
+              {attachedFiles.length > 0 && (
+                <div className="mt-2 text-xs font-medium text-slate-500">
+                  {attachedFiles.length} file(s) attached
+                </div>
+              )}
+            </div>
 
-### 1. Inline Styles (The Native React Way)
-In React, you can pass a JavaScript object directly to the `style` attribute of an element. This means you write styles using JavaScript's camelCase naming convention instead of standard CSS hyphenation (e.g., you use `backgroundColor` instead of `background-color`).
+            <button
+              onClick={handleGenerate}
+              disabled={loading}
+              className="w-full mt-4 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-300 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
+            >
+              {loading ? "Generating..." : "Generate Workflow"}
+            </button>
+            {error && <div className="mt-2 text-red-500 text-xs font-semibold">{error}</div>}
+          </aside>
 
-This is perfect if you want zero external dependencies:
+          {/* ReactFlow Canvas */}
+          <div className="flex-1 w-full h-full" ref={reactFlowWrapper}>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onDrop={onDrop}
+              onDragOver={onDragOver}
+              onNodeClick={onNodeClick}
+              nodeTypes={nodeTypes}
+              fitView
+              className="bg-transparent"
+            >
+              <Background color="#94a3b8" gap={16} size={1} />
+              <Controls className="!bg-white/80 !backdrop-blur-md !border-white/50 !shadow-xl !rounded-xl" />
+            </ReactFlow>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
 
-```jsx
-export default function PlayerDashboard() {
-  // Define styles as a JavaScript object
-  const containerStyle = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    backgroundColor: '#282c34',
-    padding: '20px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 8px rgba(0,0,0,0.2)'
-  };
-
+export default function FlowchartTab() {
   return (
-    <div style={containerStyle}>
-      {/* Or pass the object directly into the element */}
-      <h1 style={{ color: '#61dafb', fontSize: '24px' }}>Welcome Back</h1>
-      <button style={{ padding: '10px 20px', cursor: 'pointer' }}>
-        Start Game
-      </button>
-    </div>
+    <ReactFlowProvider>
+      <FlowchartContent />
+    </ReactFlowProvider>
   );
 }

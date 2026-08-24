@@ -11,7 +11,6 @@ import ReactFlow, {
   Position,
   MarkerType,
 } from "reactflow";
-import dagre from "dagre";
 import "reactflow/dist/style.css";
 
 const CustomNode = ({ data, selected }) => {
@@ -67,41 +66,6 @@ const PALETTE = [
 
 let idCounter = 1;
 const nextId = () => `node_${idCounter++}`;
-
-const getLayoutedElements = (nodes, edges, direction = "TB") => {
-  const dagreGraph = new dagre.graphlib.Graph();
-  dagreGraph.setDefaultEdgeLabel(() => ({}));
-
-  const nodeWidth = 240;
-  const nodeHeight = 80;
-
-  dagreGraph.setGraph({ rankdir: direction, ranksep: 80, nodesep: 60 });
-
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
-  });
-
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(dagreGraph);
-
-  const layoutedNodes = nodes.map((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
-    return {
-      ...node,
-      targetPosition: Position.Top,
-      sourcePosition: Position.Bottom,
-      position: {
-        x: nodeWithPosition.x - nodeWidth / 2,
-        y: nodeWithPosition.y - nodeHeight / 2,
-      },
-    };
-  });
-
-  return { nodes: layoutedNodes, edges };
-};
 
 function FlowchartContent() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -294,21 +258,45 @@ function FlowchartContent() {
       const rawEdges = [...mermaidText.matchAll(edgeRegex)];
 
       const keys = Object.keys(nodeMap);
+      const levels = {};
+      const xOffsets = {};
 
-      const parsedNodes = keys.map((key) => {
+      rawEdges.forEach((e) => {
+        const src = e[1];
+        const tgt = e[3];
+        if (levels[src] === undefined) levels[src] = 0;
+        levels[tgt] = Math.max(levels[tgt] || 0, levels[src] + 1);
+      });
+
+      keys.forEach((parentKey) => {
+        const children = rawEdges.filter((e) => e[1] === parentKey);
+        if (children.length > 1) {
+          children.forEach((cEdge, idx) => {
+            const childKey = cEdge[3];
+            const offset = idx === 0 ? -200 : 200;
+            xOffsets[childKey] = (xOffsets[parentKey] || 0) + offset;
+          });
+        }
+      });
+
+      const parsedNodes = keys.map((key, index) => {
         const label = nodeMap[key];
         const lower = label.toLowerCase();
         let nType = "action";
-        if (lower.includes("start") || lower.includes("end") || lower.includes("confirm") || lower.includes("email")) {
+        if (lower.includes("start") || lower.includes("end") || lower.includes("confirm")) {
           nType = "trigger";
         } else if (label.includes("?") || lower.includes("check") || lower.includes("stock") || lower.includes("retry")) {
           nType = "condition";
         }
 
+        const depth = levels[key] !== undefined ? levels[key] : index;
+        const xPos = 300 + (xOffsets[key] || 0);
+        const yPos = 40 + depth * 130;
+
         return {
           id: key,
           type: "custom",
-          position: { x: 0, y: 0 },
+          position: { x: xPos, y: yPos },
           data: { label, nodeType: nType },
         };
       });
@@ -319,7 +307,7 @@ function FlowchartContent() {
         const target = e[3];
 
         const lowerBranch = branchLabel.toLowerCase();
-        const isNegative = lowerBranch.includes("no") || lowerBranch.includes("fail") || lowerBranch.includes("out of stock") || lowerBranch.includes("cancel");
+        const isNegative = lowerBranch.includes("no") || lowerBranch.includes("fail") || lowerBranch.includes("out of stock");
 
         return {
           id: `e_${source}_${target}_${idx}`,
@@ -338,15 +326,9 @@ function FlowchartContent() {
       });
 
       if (parsedNodes.length > 0) {
-        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-          parsedNodes,
-          parsedEdges,
-          "TB"
-        );
-
-        setNodes(layoutedNodes);
-        setEdges(layoutedEdges);
-        setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
+        setNodes(parsedNodes);
+        setEdges(parsedEdges);
+        setTimeout(() => fitView({ padding: 0.25, duration: 400 }), 50);
       }
     } catch (err) {
       setError("Failed to generate correct flow logic.");

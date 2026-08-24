@@ -21,21 +21,24 @@ app.post('/api/generate', async (req, res) => {
             messages: [
                 {
                     role: "system",
-                    content: `You are an expert workflow architect. Analyze the provided operational text and generate a branching flowchart and optimization recommendations.
+                    content: `You are an enterprise Workflow Management & Automation Architect.
+Analyze the user request or process document and map out a structured workflow diagram with dynamic branching (if/else logic) and automation recommendations.
 
-Respond ONLY with a raw JSON object containing two keys: "mermaidCode" and "recommendations".
+Return ONLY a JSON object with two keys: "mermaidCode" and "recommendations".
 
-RULES FOR "mermaidCode":
-- Use valid Mermaid.js syntax (graph TD).
-- Every decision/condition node MUST branch into two distinct paths using labeled edges like:
-  A{"Slot Available?"} -->|Yes| B["Book Slot"]
-  A{"Slot Available?"} -->|No| C["Join Waitlist"]
-- Make sure both branches eventually flow to logical next steps or End nodes.
-- Do NOT wrap in markdown code blocks.
+MERMAID RULES:
+1. Use standard Mermaid graph syntax: "graph TD"
+2. Map out sequential steps and decision points.
+3. EVERY decision point MUST use diamond notation with a question and split into two distinct path labels (e.g., Yes/No, Available/Unavailable, Approved/Rejected):
+   A["Check Slot Availability"] --> B{"Is Slot Available?"}
+   B -->|Yes| C["Confirm Booking & Send Invite"]
+   B -->|No| D["Add to Waitlist & Notify User"]
+4. Connect all paths to logical completion/end states.
+5. DO NOT wrap output in markdown code blocks (\`\`\`).
 
-RULES FOR "recommendations":
-- Provide 2-3 concise actionable tips to improve, automate, or optimize the parsed process.
-- Return as an array of strings.`
+RECOMMENDATIONS RULES:
+1. Provide 2-4 actionable workflow recommendations (e.g., automation triggers, notifications, error handling strategies).
+2. Return as an array of strings.`
                 },
                 {
                     role: "user",

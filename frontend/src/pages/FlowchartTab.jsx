@@ -16,20 +16,30 @@ import "reactflow/dist/style.css";
 const CustomNode = ({ data, selected }) => {
   const isTrigger = data.nodeType === "trigger";
   const isCondition = data.nodeType === "condition";
+  const status = data.status || "default"; // 'positive', 'negative', 'default'
 
-  const borderColor = isTrigger
-    ? "border-indigo-500"
-    : isCondition
-    ? "border-amber-500"
-    : "border-slate-300";
+  let borderColor = "border-slate-300";
+  let headerBg = "bg-slate-800 text-white";
 
-  const headerBg = isTrigger
-    ? "bg-indigo-600 text-white"
-    : isCondition
-    ? "bg-amber-500 text-white"
-    : "bg-slate-800 text-white";
+  if (status === "positive") {
+    borderColor = "border-emerald-500";
+    headerBg = "bg-emerald-600 text-white";
+  } else if (status === "negative") {
+    borderColor = "border-red-500";
+    headerBg = "bg-red-600 text-white";
+  } else if (isTrigger) {
+    borderColor = "border-indigo-500";
+    headerBg = "bg-indigo-600 text-white";
+  } else if (isCondition) {
+    borderColor = "border-amber-500";
+    headerBg = "bg-amber-500 text-white";
+  }
 
-  const iconName = isTrigger
+  const iconName = status === "positive"
+    ? "check_circle"
+    : status === "negative"
+    ? "cancel"
+    : isTrigger
     ? "bolt"
     : isCondition
     ? "call_split"
@@ -211,7 +221,7 @@ function FlowchartContent() {
         id: nextId(),
         type: "custom",
         position,
-        data: { label: meta.label, nodeType },
+        data: { label: meta.label, nodeType, status: "default" },
       };
       setNodes((nds) => nds.concat(newNode));
     },
@@ -257,6 +267,19 @@ function FlowchartContent() {
       const edgeRegex = /([A-Za-z0-9_]+)\s*-->\s*(?:\|([^|]+)\|)?\s*([A-Za-z0-9_]+)/g;
       const rawEdges = [...mermaidText.matchAll(edgeRegex)];
 
+      const nodeStatusMap = {};
+
+      rawEdges.forEach((e) => {
+        const branchLabel = (e[2] || "").toLowerCase();
+        const targetId = e[3];
+
+        if (branchLabel.includes("yes") || branchLabel.includes("accept") || branchLabel.includes("approve") || branchLabel.includes("confirm") || branchLabel.includes("success")) {
+          nodeStatusMap[targetId] = "positive";
+        } else if (branchLabel.includes("no") || branchLabel.includes("reject") || branchLabel.includes("fail") || branchLabel.includes("cancel") || branchLabel.includes("out of stock")) {
+          nodeStatusMap[targetId] = "negative";
+        }
+      });
+
       const keys = Object.keys(nodeMap);
       const levels = {};
       const xOffsets = {};
@@ -283,10 +306,17 @@ function FlowchartContent() {
         const label = nodeMap[key];
         const lower = label.toLowerCase();
         let nType = "action";
-        if (lower.includes("start") || lower.includes("end") || lower.includes("confirm")) {
+        if (lower.includes("start") || lower.includes("end")) {
           nType = "trigger";
         } else if (label.includes("?") || lower.includes("check") || lower.includes("stock") || lower.includes("retry")) {
           nType = "condition";
+        }
+
+        let nodeStatus = nodeStatusMap[key] || "default";
+        if (lower.includes("confirmed") || lower.includes("success") || lower.includes("approved")) {
+          nodeStatus = "positive";
+        } else if (lower.includes("failed") || lower.includes("cancelled") || lower.includes("rejected")) {
+          nodeStatus = "negative";
         }
 
         const depth = levels[key] !== undefined ? levels[key] : index;
@@ -297,7 +327,7 @@ function FlowchartContent() {
           id: key,
           type: "custom",
           position: { x: xPos, y: yPos },
-          data: { label, nodeType: nType },
+          data: { label, nodeType: nType, status: nodeStatus },
         };
       });
 
@@ -307,7 +337,12 @@ function FlowchartContent() {
         const target = e[3];
 
         const lowerBranch = branchLabel.toLowerCase();
-        const isNegative = lowerBranch.includes("no") || lowerBranch.includes("fail") || lowerBranch.includes("out of stock");
+        const isPositive = lowerBranch.includes("yes") || lowerBranch.includes("accept") || lowerBranch.includes("approve") || lowerBranch.includes("confirm") || lowerBranch.includes("success");
+        const isNegative = lowerBranch.includes("no") || lowerBranch.includes("reject") || lowerBranch.includes("fail") || lowerBranch.includes("cancel") || lowerBranch.includes("out of stock");
+
+        let strokeColor = "#6366f1";
+        if (isPositive) strokeColor = "#10b981";
+        if (isNegative) strokeColor = "#ef4444";
 
         return {
           id: `e_${source}_${target}_${idx}`,
@@ -316,9 +351,9 @@ function FlowchartContent() {
           label: branchLabel,
           type: "smoothstep",
           animated: true,
-          style: { stroke: isNegative ? "#ef4444" : "#6366f1", strokeWidth: 2.5 },
-          markerEnd: { type: MarkerType.ArrowClosed, color: isNegative ? "#ef4444" : "#6366f1" },
-          labelStyle: { fill: isNegative ? "#dc2626" : "#4f46e5", fontWeight: 800, fontSize: 11 },
+          style: { stroke: strokeColor, strokeWidth: 2.5 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: strokeColor },
+          labelStyle: { fill: strokeColor, fontWeight: 800, fontSize: 11 },
           labelBgPadding: [6, 4],
           labelBgBorderRadius: 6,
           labelBgStyle: { fill: "#ffffff", fillOpacity: 0.95 },

@@ -13,44 +13,86 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 
-// --- Custom Animations & Glassmorphism Styles ---
+// --- Custom High-End Futuristic Animations ---
 const customStyles = `
-  @keyframes popIn {
-    0% { opacity: 0; transform: scale(0.8) translateY(20px); }
-    100% { opacity: 1; transform: scale(1) translateY(0); }
-  }
-  .animate-pop-in {
-    animation: popIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-  
-  @keyframes glowPulse {
-    0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
-    70% { box-shadow: 0 0 0 15px rgba(99, 102, 241, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
-  }
-  .animate-glow-pulse {
-    animation: glowPulse 2.5s infinite;
-  }
-  
-  @keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-  .bg-animated-mesh {
-    background: linear-gradient(-45deg, #eef2ff, #f8fafc, #f3e8ff, #e0e7ff, #f1f5f9);
-    background-size: 400% 400%;
-    animation: gradientShift 15s ease infinite;
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&display=swap');
+
+  :root {
+    --bg-dark: #07090e;
+    --panel-bg: rgba(13, 17, 28, 0.75);
+    --neon-cyan: #00f0ff;
+    --neon-purple: #b026ff;
+    --neon-green: #39ff14;
+    --neon-red: #ff2a2a;
+    --neon-orange: #ff9900;
   }
 
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background-color: var(--bg-dark);
+    color: #e2e8f0;
+  }
+
+  @keyframes cyberDropIn {
+    0% { opacity: 0; transform: scale(0.7) translateY(-40px); filter: blur(10px); box-shadow: 0 0 0 transparent; }
+    70% { transform: scale(1.05) translateY(5px); filter: blur(0px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .animate-cyber-drop {
+    animation: cyberDropIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    opacity: 0; /* Starts hidden, animation reveals it */
+  }
+
+  @keyframes scanline {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+
+  .scanner-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(to right, transparent, var(--neon-cyan), transparent);
+    opacity: 0.5;
+    animation: scanline 2s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes pulseGlow {
+    0% { box-shadow: 0 0 5px var(--glow), inset 0 0 5px var(--glow); }
+    50% { box-shadow: 0 0 20px var(--glow), inset 0 0 10px var(--glow); }
+    100% { box-shadow: 0 0 5px var(--glow), inset 0 0 5px var(--glow); }
+  }
+
+  .cyber-node-glow {
+    animation: pulseGlow 3s infinite;
+  }
+
+  /* React Flow Customization */
   .react-flow__edge-path {
     stroke-linecap: round;
+    filter: drop-shadow(0 0 3px currentColor);
   }
   
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 10px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.5); }
+  .react-flow__panel {
+    background: rgba(13, 17, 28, 0.8) !important;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+  }
+  
+  .react-flow__controls-button {
+    background: transparent !important;
+    border-bottom: 1px solid #1e293b !important;
+    fill: #94a3b8 !important;
+  }
+  .react-flow__controls-button:hover {
+    fill: var(--neon-cyan) !important;
+    background: rgba(0, 240, 255, 0.1) !important;
+  }
 `;
 
 const CustomNode = ({ data, selected }) => {
@@ -58,71 +100,76 @@ const CustomNode = ({ data, selected }) => {
   const isCondition = data.nodeType === "condition";
   const status = data.status || "default";
 
-  let borderColor, headerBg, bodyBg;
+  let glowColor, borderColor, iconColor;
 
   if (status === "positive") {
-    borderColor = "border-emerald-400";
-    headerBg = "bg-gradient-to-r from-emerald-500 to-emerald-600";
-    bodyBg = "bg-white/90 backdrop-blur-md";
+    glowColor = "var(--neon-green)";
+    borderColor = "border-[#39ff14]/60";
+    iconColor = "text-[#39ff14]";
   } else if (status === "negative") {
-    borderColor = "border-red-400";
-    headerBg = "bg-gradient-to-r from-red-500 to-red-600";
-    bodyBg = "bg-white/90 backdrop-blur-md";
+    glowColor = "var(--neon-red)";
+    borderColor = "border-[#ff2a2a]/60";
+    iconColor = "text-[#ff2a2a]";
   } else if (isTrigger) {
-    borderColor = "border-indigo-400";
-    headerBg = "bg-gradient-to-r from-indigo-500 to-indigo-600";
-    bodyBg = "bg-white/90 backdrop-blur-md";
+    glowColor = "var(--neon-purple)";
+    borderColor = "border-[#b026ff]/60";
+    iconColor = "text-[#b026ff]";
   } else if (isCondition) {
-    borderColor = "border-amber-400";
-    headerBg = "bg-gradient-to-r from-amber-500 to-amber-600";
-    bodyBg = "bg-white/90 backdrop-blur-md";
+    glowColor = "var(--neon-orange)";
+    borderColor = "border-[#ff9900]/60";
+    iconColor = "text-[#ff9900]";
   } else {
-    borderColor = "border-slate-300";
-    headerBg = "bg-gradient-to-r from-slate-700 to-slate-800";
-    bodyBg = "bg-white/90 backdrop-blur-md";
+    glowColor = "var(--neon-cyan)";
+    borderColor = "border-[#00f0ff]/50";
+    iconColor = "text-[#00f0ff]";
   }
 
-  const iconName = status === "positive"
-    ? "check_circle"
-    : status === "negative"
-    ? "cancel"
-    : isTrigger
-    ? "bolt"
-    : isCondition
-    ? "call_split"
-    : "settings";
-
-  // Stagger animation based on index passed in data for cascading appearance
-  const animationDelay = `${(data.animationIndex || 0) * 0.12}s`;
+  const iconName =
+    status === "positive" ? "check_circle"
+      : status === "negative" ? "cancel"
+      : isTrigger ? "bolt"
+      : isCondition ? "call_split"
+      : "memory";
 
   return (
     <div
-      style={{ animationDelay }}
-      className={`animate-pop-in opacity-0 ${bodyBg} rounded-2xl shadow-xl hover:shadow-2xl border-[2px] border-white/60 ring-1 ring-inset ${
-        selected ? "ring-4 ring-indigo-400/50 scale-105" : "hover:-translate-y-1"
-      } transition-all duration-300 ease-out overflow-hidden min-w-[220px] max-w-[280px] group ${isTrigger ? "animate-glow-pulse" : ""}`}
+      className={`animate-cyber-drop relative bg-[#0b101a]/95 backdrop-blur-xl rounded-xl border-2 ${borderColor} overflow-hidden min-w-[240px] max-w-[300px] group transition-all duration-300 ${
+        selected ? "scale-105 z-10" : "hover:-translate-y-1"
+      } ${isTrigger ? "cyber-node-glow" : ""}`}
+      style={{
+        "--glow": glowColor,
+        boxShadow: selected ? `0 0 25px ${glowColor}, inset 0 0 10px ${glowColor}` : `0 4px 15px rgba(0,0,0,0.5)`,
+        animationDelay: `${(data.index || 0) * 120}ms`, // Staggered entry
+      }}
     >
-      <Handle 
-        type="target" 
-        position={Position.Top} 
-        className={`!w-3.5 !h-3.5 !border-2 !border-white transition-transform group-hover:scale-125 ${isTrigger ? '!bg-indigo-500' : '!bg-slate-400'}`} 
+      <div className="absolute top-0 left-0 w-full h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${glowColor}, transparent)` }} />
+      
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!w-4 !h-4 !bg-[#0b101a] !border-2 transition-transform group-hover:scale-125 rounded-full"
+        style={{ borderColor: glowColor, boxShadow: `0 0 10px ${glowColor}` }}
       />
-      
-      <div className={`px-4 py-2 flex items-center justify-between text-[11px] font-extrabold tracking-widest uppercase shadow-sm ${headerBg}`}>
+
+      <div className="px-4 py-3 flex items-center justify-between text-[11px] font-bold tracking-widest uppercase bg-gradient-to-r from-white/5 to-transparent border-b border-white/5">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[16px] text-white/90 drop-shadow-md">{iconName}</span>
-          <span className="text-white/95 drop-shadow-sm">{data.nodeType || "Step"}</span>
+          <span className={`material-symbols-outlined text-[18px] drop-shadow-[0_0_8px_currentColor] ${iconColor}`}>
+            {iconName}
+          </span>
+          <span className="text-gray-300 drop-shadow-md">{data.nodeType || "Process"}</span>
         </div>
+        <div className={`w-2 h-2 rounded-full`} style={{ backgroundColor: glowColor, boxShadow: `0 0 8px ${glowColor}` }} />
       </div>
-      
-      <div className="p-4 text-xs font-semibold text-slate-800 text-center leading-relaxed">
+
+      <div className="p-5 text-sm font-medium text-gray-100 text-center leading-relaxed tracking-wide">
         {data.label}
       </div>
 
-      <Handle 
-        type="source" 
-        position={Position.Bottom} 
-        className={`!w-3.5 !h-3.5 !border-2 !border-white transition-transform group-hover:scale-125 ${isTrigger ? '!bg-indigo-500' : '!bg-slate-400'}`}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="!w-4 !h-4 !bg-[#0b101a] !border-2 transition-transform group-hover:scale-125 rounded-full"
+        style={{ borderColor: glowColor, boxShadow: `0 0 10px ${glowColor}` }}
       />
     </div>
   );
@@ -131,9 +178,9 @@ const CustomNode = ({ data, selected }) => {
 const nodeTypes = { custom: CustomNode };
 
 const PALETTE = [
-  { type: "trigger", label: "Trigger / Terminal", icon: "bolt", color: "#6366f1" },
-  { type: "action", label: "Action Process", icon: "settings", color: "#1e293b" },
-  { type: "condition", label: "Condition / Check", icon: "call_split", color: "#d97706" },
+  { type: "trigger", label: "System Trigger", icon: "bolt", color: "#b026ff" },
+  { type: "action", label: "Execute Process", icon: "memory", color: "#00f0ff" },
+  { type: "condition", label: "Logic Branch", icon: "call_split", color: "#ff9900" },
 ];
 
 let idCounter = 1;
@@ -171,7 +218,7 @@ function FlowchartContent() {
   }, []);
 
   const extractPdfText = async (file) => {
-    if (!window.pdfjsLib) throw new Error("PDF library loading...");
+    if (!window.pdfjsLib) throw new Error("Neural interface loading...");
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let fullText = "";
@@ -219,12 +266,12 @@ function FlowchartContent() {
       mediaRecorder.onstop = () => {
         stream.getTracks().forEach((track) => track.stop());
         setIsRecording(false);
-        setPrompt((prev) => prev ? `${prev}\n\n[Voice note recorded]` : "[Voice note recorded]");
+        setPrompt((prev) => prev ? `${prev}\n\n[Voice packet received]` : "[Voice packet received]");
       };
       mediaRecorder.start();
       setIsRecording(true);
     } catch (err) {
-      alert("Microphone permission denied.");
+      alert("Audio interface permission denied.");
       setIsRecording(false);
     }
   };
@@ -237,9 +284,9 @@ function FlowchartContent() {
       if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
         try {
           const parsedText = await extractPdfText(file);
-          if (parsedText) setPrompt((prev) => prev ? `${prev}\n\nProcess document:\n${parsedText}` : `Process document:\n${parsedText}`);
+          if (parsedText) setPrompt((prev) => prev ? `${prev}\n\nProcess datastream:\n${parsedText}` : `Process datastream:\n${parsedText}`);
         } catch (pdfErr) {
-          setError("Failed to parse PDF file.");
+          setError("Failed to decrypt PDF module.");
         }
       } else {
         const reader = new FileReader();
@@ -252,7 +299,7 @@ function FlowchartContent() {
   };
 
   const onConnect = useCallback(
-    (params) => setEdges((eds) => addEdge({ ...params, type: "smoothstep", animated: true, style: { stroke: "#6366f1", strokeWidth: 3 } }, eds)),
+    (params) => setEdges((eds) => addEdge({ ...params, type: "smoothstep", animated: true, style: { stroke: "#00f0ff", strokeWidth: 3, filter: 'drop-shadow(0 0 5px #00f0ff)' } }, eds)),
     [setEdges]
   );
 
@@ -283,7 +330,7 @@ function FlowchartContent() {
         id: nextId(),
         type: "custom",
         position,
-        data: { label: meta.label, nodeType, status: "default", animationIndex: 0 },
+        data: { label: meta.label, nodeType, status: "default", index: 0 },
       };
       setNodes((nds) => nds.concat(newNode));
     },
@@ -316,7 +363,7 @@ function FlowchartContent() {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to generate workflow");
+      if (!response.ok) throw new Error(data.error || "Neural link failure");
 
       setRecommendations(data.recommendations || []);
       const mermaidText = data.mermaidCode || "";
@@ -328,7 +375,6 @@ function FlowchartContent() {
 
       const edgeRegex = /([A-Za-z0-9_]+)\s*-->\s*(?:\|([^|]+)\|)?\s*([A-Za-z0-9_]+)/g;
       const rawEdges = [...mermaidText.matchAll(edgeRegex)];
-
       const nodeStatusMap = {};
 
       rawEdges.forEach((e) => {
@@ -358,195 +404,307 @@ function FlowchartContent() {
         if (children.length > 1) {
           children.forEach((cEdge, idx) => {
             const childKey = cEdge[3];
-            const offset = idx === 0 ? -220 : 220;
+            const offset = idx === 0 ? -280 : 280; 
             xOffsets[childKey] = (xOffsets[parentKey] || 0) + offset;
           });
         }
       });
 
-      const parsedNodes = keys.map((key, index) => {
-        const label = nodeMap[key];
-        const lower = label.toLowerCase();
-        let nType = "action";
-        if (lower.includes("start") || lower.includes("end")) {
-          nType = "trigger";
-        } else if (label.includes("?") || lower.includes("check") || lower.includes("stock") || lower.includes("retry")) {
-          nType = "condition";
+      // Clear existing to trigger re-mount animations
+      setNodes([]);
+      setEdges([]);
+
+      setTimeout(() => {
+        const parsedNodes = keys.map((key, index) => {
+          const label = nodeMap[key];
+          const lower = label.toLowerCase();
+          let nType = "action";
+          if (lower.includes("start") || lower.includes("end")) {
+            nType = "trigger";
+          } else if (label.includes("?") || lower.includes("check") || lower.includes("stock") || lower.includes("retry")) {
+            nType = "condition";
+          }
+
+          let nodeStatus = nodeStatusMap[key] || "default";
+          if (lower.includes("confirmed") || lower.includes("success") || lower.includes("approved")) {
+            nodeStatus = "positive";
+          } else if (lower.includes("failed") || lower.includes("cancelled") || lower.includes("rejected")) {
+            nodeStatus = "negative";
+          }
+
+          const depth = levels[key] !== undefined ? levels[key] : index;
+          const xPos = 350 + (xOffsets[key] || 0);
+          const yPos = 50 + depth * 160; 
+
+          return {
+            id: key,
+            type: "custom",
+            position: { x: xPos, y: yPos },
+            data: { label, nodeType: nType, status: nodeStatus, index: index }, // index handles animation stagger
+          };
+        });
+
+        const parsedEdges = rawEdges.map((e, idx) => {
+          const source = e[1];
+          const branchLabel = e[2] || "";
+          const target = e[3];
+
+          const lowerBranch = branchLabel.toLowerCase();
+          const isPositive = lowerBranch.includes("yes") || lowerBranch.includes("accept") || lowerBranch.includes("approve") || lowerBranch.includes("confirm") || lowerBranch.includes("success");
+          const isNegative = lowerBranch.includes("no") || lowerBranch.includes("reject") || lowerBranch.includes("fail") || lowerBranch.includes("cancel") || lowerBranch.includes("out of stock");
+
+          let strokeColor = "currentColor";
+          let cssColor = "#00f0ff"; 
+
+          if (isPositive) { cssColor = "#39ff14"; strokeColor = cssColor; }
+          else if (isNegative) { cssColor = "#ff2a2a"; strokeColor = cssColor; }
+          else { cssColor = "#00f0ff"; strokeColor = cssColor; }
+
+          return {
+            id: `e_${source}_${target}_${idx}`,
+            source,
+            target,
+            label: branchLabel,
+            type: "smoothstep",
+            animated: true,
+            style: { stroke: strokeColor, strokeWidth: 3, filter: `drop-shadow(0 0 4px ${cssColor})` },
+            markerEnd: { type: MarkerType.ArrowClosed, color: strokeColor },
+            labelStyle: { fill: "#fff", fontWeight: 700, fontSize: 13, textShadow: `0 0 10px ${cssColor}` },
+            labelBgPadding: [8, 6],
+            labelBgBorderRadius: 4,
+            labelBgStyle: { fill: "#0d111c", fillOpacity: 0.9, stroke: strokeColor, strokeWidth: 1 },
+          };
+        });
+
+        if (parsedNodes.length > 0) {
+          setNodes(parsedNodes);
+          setEdges(parsedEdges);
+          setTimeout(() => fitView({ padding: 0.3, duration: 1000 }), 100);
         }
+      }, 300); // slight delay to feel like processing
 
-        let nodeStatus = nodeStatusMap[key] || "default";
-        if (lower.includes("confirmed") || lower.includes("success") || lower.includes("approved")) {
-          nodeStatus = "positive";
-        } else if (lower.includes("failed") || lower.includes("cancelled") || lower.includes("rejected")) {
-          nodeStatus = "negative";
-        }
-
-        const depth = levels[key] !== undefined ? levels[key] : index;
-        const xPos = 300 + (xOffsets[key] || 0);
-        const yPos = 40 + depth * 140;
-
-        return {
-          id: key,
-          type: "custom",
-          position: { x: xPos, y: yPos },
-          data: { label, nodeType: nType, status: nodeStatus, animationIndex: index },
-        };
-      });
-
-      const parsedEdges = rawEdges.map((e, idx) => {
-        const source = e[1];
-        const branchLabel = e[2] || "";
-        const target = e[3];
-
-        const lowerBranch = branchLabel.toLowerCase();
-        const isPositive = lowerBranch.includes("yes") || lowerBranch.includes("accept") || lowerBranch.includes("approve") || lowerBranch.includes("confirm") || lowerBranch.includes("success");
-        const isNegative = lowerBranch.includes("no") || lowerBranch.includes("reject") || lowerBranch.includes("fail") || lowerBranch.includes("cancel") || lowerBranch.includes("out of stock");
-
-        let strokeColor = "#94a3b8"; 
-        let edgeAnimated = true; 
-
-        if (isPositive) strokeColor = "#10b981"; 
-        else if (isNegative) strokeColor = "#ef4444"; 
-        else strokeColor = "#6366f1"; 
-
-        return {
-          id: `e_${source}_${target}_${idx}`,
-          source,
-          target,
-          label: branchLabel,
-          type: "smoothstep",
-          animated: edgeAnimated,
-          style: { stroke: strokeColor, strokeWidth: 3 },
-          markerEnd: { type: MarkerType.ArrowClosed, color: strokeColor },
-          labelStyle: { fill: strokeColor, fontWeight: 800, fontSize: 12 },
-          labelBgPadding: [8, 6],
-          labelBgBorderRadius: 8,
-          labelBgStyle: { fill: "#ffffff", fillOpacity: 0.95, stroke: strokeColor, strokeWidth: 1.5 },
-        };
-      });
-
-      if (parsedNodes.length > 0) {
-        setNodes(parsedNodes);
-        setEdges(parsedEdges);
-        setTimeout(() => fitView({ padding: 0.25, duration: 800 }), 50);
-      }
     } catch (err) {
-      console.error("Generation error:", err);
-      setError(err.message || "Failed to generate correct flow logic.");
+      setError("System failed to map neural logic.");
     } finally {
       setLoading(false);
     }
   };
 
+  const hasWorkflow = nodes.length > 0;
+
   return (
     <>
       <style>{customStyles}</style>
-      <div className="min-h-screen bg-animated-mesh flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+      <div className="min-h-screen flex flex-col selection:bg-[#00f0ff] selection:text-[#0d111c] relative overflow-hidden">
         
-        {/* Glassmorphism Header */}
-        <header className="bg-white/50 backdrop-blur-xl border-b border-white/40 shadow-[0_4px_30px_rgba(0,0,0,0.03)] flex justify-between items-center h-16 px-8 w-full fixed top-0 z-50 transition-all">
+        {/* Futuristic Background */}
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] z-0 pointer-events-none"></div>
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#00f0ff] blur-[200px] opacity-[0.05] z-0 rounded-full"></div>
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-[#b026ff] blur-[200px] opacity-[0.05] z-0 rounded-full"></div>
+
+        <header className="bg-[#0b101a]/80 backdrop-blur-2xl border-b border-[#1e293b] flex justify-between items-center h-16 px-6 w-full fixed top-0 z-50 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
           <div className="flex items-center gap-4">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-200">
-              <span className="material-symbols-outlined text-white text-[18px]">account_tree</span>
+            <div className="font-extrabold text-xl bg-clip-text text-transparent bg-gradient-to-r from-[#00f0ff] to-[#b026ff] tracking-widest uppercase shrink-0 drop-shadow-[0_0_10px_rgba(0,240,255,0.4)]">
+              Nexus Flow // AI
             </div>
-            <div className="font-extrabold text-xl bg-clip-text text-transparent bg-gradient-to-r from-indigo-700 to-violet-600 tracking-tight shrink-0">
-              LogicFlow AI
-            </div>
-            <div className="h-6 w-px bg-slate-300/50 mx-2"></div>
+            <div className="h-6 w-[2px] bg-[#1e293b] mx-2"></div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-sm text-slate-600 tracking-wide">Workflow Studio</span>
+              <span className="font-medium text-xs text-[#94a3b8] uppercase tracking-widest">Logic Synthesizer</span>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+             <div className="w-2 h-2 rounded-full bg-[#39ff14] animate-pulse shadow-[0_0_10px_#39ff14]"></div>
+             <span className="text-[10px] text-[#94a3b8] font-bold tracking-widest uppercase">System Online</span>
           </div>
         </header>
 
-        <div className="flex flex-1 pt-16 h-full relative">
-          
-          {/* Floating Glassmorphism Sidebar */}
-          <aside className="absolute left-6 top-24 bottom-6 w-80 flex flex-col z-40 bg-white/60 backdrop-blur-xl border border-white/70 rounded-3xl p-5 shadow-[0_8px_32px_rgba(31,38,135,0.07)]">
-            <div className="mb-4">
-              <h2 className="font-extrabold text-lg text-slate-800 bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-500">
-                Workflow Engine
-              </h2>
-              <p className="text-xs font-semibold text-slate-500 tracking-wide">AI Logic Extraction</p>
+        <div className="flex flex-1 pt-16 h-full relative z-10">
+          <aside className="bg-[#0d111c]/90 backdrop-blur-2xl border-r border-[#1e293b] fixed left-0 top-16 h-[calc(100vh-4rem)] w-80 flex flex-col p-5 shadow-[4px_0_30px_rgba(0,0,0,0.5)]">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="font-bold text-sm text-[#e2e8f0] uppercase tracking-widest">Command Interface</h2>
+                <p className="text-[10px] text-[#00f0ff] tracking-widest uppercase mt-1">Data Injection Module</p>
+              </div>
+              <span className="material-symbols-outlined text-[#00f0ff] text-2xl drop-shadow-[0_0_8px_#00f0ff]">terminal</span>
             </div>
 
-            <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 pb-2">
+            <div className="flex-1 flex flex-col gap-5 overflow-y-auto pr-2 custom-scrollbar">
               <div className="relative group">
                 <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  className="w-full h-32 border border-white/50 bg-white/40 rounded-2xl p-4 pr-12 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-400/20 resize-none transition-all shadow-inner placeholder:text-slate-400 font-medium"
-                  placeholder="Describe process, record voice, or attach files..."
+                  className="w-full h-32 bg-[#06080d] border border-[#1e293b] rounded-xl p-4 pr-12 text-xs text-[#e2e8f0] outline-none focus:border-[#00f0ff] focus:ring-1 focus:ring-[#00f0ff] resize-none transition-all shadow-inner font-mono"
+                  placeholder="Initiate logic sequence, attach data, or record protocol..."
                 ></textarea>
+                
+                {/* Cyber Scanner effect on focus */}
+                <div className="absolute top-0 left-0 w-full h-full pointer-events-none rounded-xl overflow-hidden opacity-0 group-focus-within:opacity-100 transition-opacity">
+                  <div className="scanner-bar"></div>
+                </div>
 
                 <button
                   onClick={handleMicrophoneToggle}
-                  title={isRecording ? "Stop recording" : "Start voice input"}
-                  className={`absolute right-3 bottom-4 p-2.5 rounded-full transition-all duration-300 ${
+                  title={isRecording ? "Terminate recording" : "Initialize voice input"}
+                  className={`absolute right-3 bottom-4 p-2 rounded-lg transition-all ${
                     isRecording
-                      ? "bg-red-500 text-white animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]"
-                      : "bg-white/80 text-indigo-500 hover:text-indigo-700 hover:bg-white shadow-sm hover:shadow-md"
+                      ? "bg-[#ff2a2a]/20 text-[#ff2a2a] border border-[#ff2a2a] animate-pulse shadow-[0_0_15px_rgba(255,42,42,0.5)]"
+                      : "text-[#64748b] bg-[#1e293b]/50 border border-transparent hover:text-[#00f0ff] hover:border-[#00f0ff]/50 hover:bg-[#00f0ff]/10"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[20px]">
+                  <span className="material-symbols-outlined text-[18px]">
                     {isRecording ? "mic_off" : "mic"}
                   </span>
                 </button>
               </div>
 
               <div>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  multiple
-                  accept=".pdf,.txt,.csv,.json,image/*"
-                  className="hidden"
-                />
+                <input type="file" ref={fileInputRef} onChange={handleFileUpload} multiple accept=".pdf,.txt,.csv,.json,image/*" className="hidden" />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-indigo-200/60 rounded-xl p-4 text-center text-sm font-semibold text-indigo-500 hover:bg-indigo-50/50 hover:border-indigo-400 transition-all cursor-pointer"
+                  className="w-full border border-dashed border-[#1e293b] hover:border-[#b026ff] bg-[#06080d]/50 hover:bg-[#b026ff]/10 py-3 rounded-xl text-[#94a3b8] text-[11px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:text-[#b026ff] hover:shadow-[0_0_15px_rgba(176,38,255,0.2)] group"
                 >
-                  Attach Files
+                  <span className="material-symbols-outlined text-[18px] group-hover:scale-110 transition-transform">library_add</span>
+                  Mount Data Node
                 </button>
+
+                {attachedFiles.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {attachedFiles.map((name, i) => (
+                      <span key={i} className="text-[9px] font-mono bg-[#0b101a] border border-[#1e293b] text-[#00f0ff] px-2 py-1 rounded md truncate max-w-full flex items-center gap-1 shadow-[0_0_5px_rgba(0,240,255,0.2)]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-pulse"></span>
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {attachedFiles.length > 0 && (
-                <div className="mt-2 text-xs font-medium text-slate-500">
-                  {attachedFiles.length} file(s) attached
+              <button
+                onClick={handleGenerate}
+                disabled={loading}
+                className="relative w-full bg-gradient-to-r from-[#00f0ff] to-[#0088ff] hover:from-[#39ff14] hover:to-[#00f0ff] text-[#06080d] text-xs font-bold uppercase tracking-widest py-3.5 rounded-xl transition-all shadow-[0_0_20px_rgba(0,240,255,0.4)] flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 overflow-hidden group"
+              >
+                <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out"></div>
+                <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin' : ''}`}>
+                  {loading ? "autorenew" : "hub"}
+                </span>
+                {loading ? "Synthesizing Neural Path..." : "Compile Workflow"}
+              </button>
+
+              {recommendations.length > 0 && (
+                <div className="p-4 bg-[#0b101a] border border-[#b026ff]/40 rounded-xl shadow-[0_0_15px_rgba(176,38,255,0.15)] relative overflow-hidden">
+                  <div className="absolute left-0 top-0 w-1 h-full bg-[#b026ff]"></div>
+                  <div className="flex items-center gap-2 mb-3 text-[#b026ff] font-bold text-[10px] uppercase tracking-widest">
+                    <span className="material-symbols-outlined text-[16px]">psychology</span>
+                    System Insights
+                  </div>
+                  <ul className="text-[11px] font-medium text-gray-300 flex flex-col gap-2 list-none pl-1">
+                    {recommendations.map((rec, i) => (
+                      <li key={i} className="flex gap-2 items-start">
+                        <span className="text-[#00f0ff] mt-0.5">▹</span> {rec}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
+
+              <div className="h-px bg-gradient-to-r from-transparent via-[#1e293b] to-transparent my-2"></div>
+
+              <div>
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#64748b] mb-3">Manual Override Blocks</h3>
+                <div className="flex flex-col gap-3">
+                  {PALETTE.map((n) => (
+                    <div
+                      key={n.type}
+                      draggable
+                      onDragStart={(e) => onDragStart(e, n.type)}
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg border border-[#1e293b] bg-[#06080d]/60 cursor-grab hover:border-current hover:shadow-[0_0_15px_currentColor] hover:-translate-y-0.5 transition-all text-[11px] font-bold uppercase tracking-wider text-gray-300 active:cursor-grabbing"
+                      style={{ color: n.color }}
+                    >
+                      <span className="material-symbols-outlined text-[20px] drop-shadow-[0_0_8px_currentColor]">{n.icon}</span>
+                      <span className="text-gray-300">{n.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <button
-              onClick={handleGenerate}
-              disabled={loading}
-              className="w-full mt-4 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-300 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
-            >
-              {loading ? "Generating..." : "Generate Workflow"}
-            </button>
-            {error && <div className="mt-2 text-red-500 text-xs font-semibold">{error}</div>}
+            {error && (
+              <div className="mt-4 p-3 bg-[#ff2a2a]/10 border border-[#ff2a2a]/50 rounded-lg text-[#ff2a2a] text-[11px] font-bold uppercase tracking-wide flex items-center gap-2 shadow-[0_0_10px_rgba(255,42,42,0.2)]">
+                <span className="material-symbols-outlined text-[18px]">warning</span>
+                {error}
+              </div>
+            )}
           </aside>
 
-          {/* ReactFlow Canvas */}
-          <div className="flex-1 w-full h-full" ref={reactFlowWrapper}>
+          <main
+            ref={reactFlowWrapper}
+            className="flex-1 ml-80 relative overflow-hidden"
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+          >
+            {!hasWorkflow && !loading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 pointer-events-none z-10 text-center p-6">
+                <div className="w-24 h-24 rounded-full border border-[#00f0ff]/30 flex items-center justify-center text-[#00f0ff] shadow-[0_0_30px_rgba(0,240,255,0.1)] relative">
+                  <div className="absolute inset-0 border border-[#b026ff]/30 rounded-full animate-ping opacity-50"></div>
+                  <span className="material-symbols-outlined text-[40px] drop-shadow-[0_0_15px_#00f0ff]">dashboard_customize</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-[#e2e8f0] text-sm mb-2 tracking-widest uppercase">Neural Canvas Empty</h3>
+                  <p className="text-[11px] text-[#64748b] max-w-xs uppercase tracking-widest font-mono">Awaiting logic input. Use command interface or deploy manual blocks.</p>
+                </div>
+              </div>
+            )}
+
+            {loading && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#07090e]/80 backdrop-blur-sm">
+                 <div className="w-16 h-16 border-t-2 border-[#00f0ff] border-solid rounded-full animate-spin shadow-[0_0_15px_#00f0ff]"></div>
+                 <div className="mt-6 text-[#00f0ff] text-xs font-mono tracking-[0.3em] uppercase drop-shadow-[0_0_5px_#00f0ff]">Compiling Structure...</div>
+              </div>
+            )}
+
             <ReactFlow
               nodes={nodes}
               edges={edges}
+              nodeTypes={nodeTypes}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
-              onDrop={onDrop}
-              onDragOver={onDragOver}
               onNodeClick={onNodeClick}
-              nodeTypes={nodeTypes}
               fitView
-              className="bg-transparent"
+              className="w-full h-full"
             >
-              <Background color="#94a3b8" gap={16} size={1} />
-              <Controls className="!bg-white/80 !backdrop-blur-md !border-white/50 !shadow-xl !rounded-xl" />
+              <Background gap={30} color="#1e293b" variant="dots" size={2} className="opacity-50" />
+              <Controls className="!bg-[#0d111c] !border-[#1e293b] shadow-[0_0_15px_rgba(0,0,0,0.5)] rounded-lg p-1 !m-6 overflow-hidden [&>button]:!border-b-[#1e293b]" />
             </ReactFlow>
-          </div>
+
+            {selectedNode && (
+              <div className="absolute top-6 right-6 w-80 bg-[#0d111c]/95 backdrop-blur-xl border border-[#00f0ff]/40 rounded-xl shadow-[0_10px_40px_rgba(0,240,255,0.15)] p-5 z-30 animate-cyber-drop" style={{animationDelay: '0ms'}}>
+                <div className="flex justify-between items-center mb-5">
+                  <h4 className="font-bold text-[#00f0ff] text-[10px] uppercase tracking-[0.2em] flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-pulse"></span>
+                    Configure Node
+                  </h4>
+                  <button onClick={() => setSelectedNode(null)} className="text-[#64748b] hover:text-[#ff2a2a] bg-[#1e293b]/50 hover:bg-[#ff2a2a]/10 rounded-md p-1.5 transition-colors">
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                </div>
+                <input
+                  value={editLabel}
+                  onChange={(e) => setEditLabel(e.target.value)}
+                  className="w-full px-4 py-3 bg-[#06080d] border border-[#1e293b] rounded-lg text-xs font-mono text-gray-200 mb-5 outline-none focus:border-[#b026ff] focus:shadow-[0_0_15px_rgba(176,38,255,0.3)] transition-all"
+                  autoFocus
+                />
+                <button
+                  onClick={saveNodeLabel}
+                  className="w-full bg-gradient-to-r from-[#b026ff] to-[#00f0ff] text-[#06080d] py-3 rounded-lg text-[11px] font-bold uppercase tracking-widest hover:shadow-[0_0_20px_rgba(176,38,255,0.4)] transition-all flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-[16px]">save</span>
+                  Update Logic
+                </button>
+              </div>
+            )}
+          </main>
         </div>
       </div>
     </>

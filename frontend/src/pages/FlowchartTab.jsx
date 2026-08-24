@@ -7,33 +7,68 @@ import ReactFlow, {
   useEdgesState,
   ReactFlowProvider,
   useReactFlow,
+  Handle,
+  Position,
+  MarkerType,
 } from "reactflow";
 import "reactflow/dist/style.css";
 
-const NODE_TYPES = [
+// --- Custom Styled ReactFlow Node Components ---
+const CustomNode = ({ data, selected }) => {
+  const isTrigger = data.nodeType === "trigger";
+  const isCondition = data.nodeType === "condition";
+
+  const borderColor = isTrigger
+    ? "border-indigo-500"
+    : isCondition
+    ? "border-amber-500"
+    : "border-slate-300";
+
+  const headerBg = isTrigger
+    ? "bg-indigo-600 text-white"
+    : isCondition
+    ? "bg-amber-500 text-white"
+    : "bg-slate-800 text-white";
+
+  const iconName = isTrigger
+    ? "bolt"
+    : isCondition
+    ? "call_split"
+    : "settings";
+
+  return (
+    <div
+      className={`bg-white rounded-xl shadow-lg border-2 ${borderColor} transition-all duration-200 overflow-hidden min-w-[220px] max-w-[280px] ${
+        selected ? "ring-4 ring-indigo-200 scale-105" : ""
+      }`}
+    >
+      <Handle type="target" position={Position.Top} className="!bg-indigo-500 !w-3 !h-3" />
+      <div className={`px-3 py-1.5 flex items-center justify-between text-[11px] font-bold tracking-wider uppercase ${headerBg}`}>
+        <div className="flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-[14px]">{iconName}</span>
+          <span>{data.nodeType || "Step"}</span>
+        </div>
+      </div>
+      <div className="p-3 text-xs font-semibold text-slate-800 text-center leading-relaxed">
+        {data.label}
+      </div>
+      <Handle type="source" position={Position.Bottom} className="!bg-indigo-500 !w-3 !h-3" />
+    </div>
+  );
+};
+
+const nodeTypes = {
+  custom: CustomNode,
+};
+
+const PALETTE = [
   { type: "trigger", label: "Trigger / Terminal", icon: "bolt", color: "#6366f1" },
-  { type: "action", label: "Action Process", icon: "settings", color: "#4f46e5" },
+  { type: "action", label: "Action Process", icon: "settings", color: "#1e293b" },
   { type: "condition", label: "Condition / Check", icon: "call_split", color: "#d97706" },
 ];
 
 let idCounter = 1;
 const nextId = () => `node_${idCounter++}`;
-
-function nodeStyle(nodeType) {
-  const meta = NODE_TYPES.find((n) => n.type === nodeType) || NODE_TYPES[1];
-  return {
-    background: "#ffffff",
-    border: `2px solid ${meta.color}`,
-    borderRadius: 12,
-    padding: "12px 16px",
-    fontSize: 13,
-    fontWeight: 600,
-    color: "#1e293b",
-    minWidth: 200,
-    textAlign: "center",
-    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)",
-  };
-}
 
 function FlowchartContent() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -67,58 +102,43 @@ function FlowchartContent() {
   }, []);
 
   const extractPdfText = async (file) => {
-    if (!window.pdfjsLib) {
-      throw new Error("PDF library loading. Please try again in 2 seconds.");
-    }
+    if (!window.pdfjsLib) throw new Error("PDF library loading...");
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let fullText = "";
-
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
-      const pageText = textContent.items.map((item) => item.str).join(" ");
-      fullText += pageText + "\n";
+      fullText += textContent.items.map((item) => item.str).join(" ") + "\n";
     }
     return fullText.trim();
   };
 
   const handleMicrophoneToggle = async () => {
     if (isRecording) {
-      if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch (e) { console.error(e); }
-      }
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-        mediaRecorderRef.current.stop();
-      }
+      if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) {}
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") mediaRecorderRef.current.stop();
       setIsRecording(false);
       return;
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
     if (SpeechRecognition) {
       try {
         const recognition = new SpeechRecognition();
         recognitionRef.current = recognition;
         recognition.continuous = false;
-        recognition.interimResults = false;
         recognition.lang = "en-US";
-
         recognition.onstart = () => setIsRecording(true);
         recognition.onend = () => setIsRecording(false);
         recognition.onerror = () => setIsRecording(false);
-
-        recognition.onresult = (event) => {
-          const transcript = event.results[0][0].transcript;
+        recognition.onresult = (e) => {
+          const transcript = e.results[0][0].transcript;
           setPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript));
         };
-
         recognition.start();
         return;
-      } catch (err) {
-        console.warn("SpeechRecognition fallback triggered:", err);
-      }
+      } catch (err) {}
     }
 
     try {
@@ -126,26 +146,16 @@ function FlowchartContent() {
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
-
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
       mediaRecorder.onstop = () => {
         stream.getTracks().forEach((track) => track.stop());
         setIsRecording(false);
-        setPrompt((prev) =>
-          prev
-            ? `${prev}\n\n[Voice note recorded successfully]`
-            : "[Voice note recorded successfully]"
-        );
+        setPrompt((prev) => prev ? `${prev}\n\n[Voice note recorded]` : "[Voice note recorded]");
       };
-
       mediaRecorder.start();
       setIsRecording(true);
     } catch (err) {
-      console.error("Microphone access error:", err);
-      alert("Microphone permission denied or unsupported in browser settings.");
+      alert("Microphone permission denied.");
       setIsRecording(false);
     }
   };
@@ -153,37 +163,19 @@ function FlowchartContent() {
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     if (!files.length) return;
-
     for (const file of files) {
       setAttachedFiles((prev) => [...prev, file.name]);
-
       if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
         try {
           const parsedText = await extractPdfText(file);
-          if (parsedText) {
-            setPrompt((prev) =>
-              prev
-                ? `${prev}\n\nCreate a branching workflow for this document:\n${parsedText}`
-                : `Create a branching workflow for this document:\n${parsedText}`
-            );
-          } else {
-            setError("Could not extract text from PDF.");
-          }
+          if (parsedText) setPrompt((prev) => prev ? `${prev}\n\nProcess document:\n${parsedText}` : `Process document:\n${parsedText}`);
         } catch (pdfErr) {
-          console.error("PDF Parsing error:", pdfErr);
           setError("Failed to parse PDF file.");
         }
-      } else if (file.type.startsWith("image/")) {
-        setPrompt((prev) => `${prev}\n\n[Attached image: ${file.name}]`);
       } else {
         const reader = new FileReader();
         reader.onload = (e) => {
-          const cleanText = e.target.result;
-          setPrompt((prev) =>
-            prev
-              ? `${prev}\n\nCreate a flowchart based on this content:\n${cleanText}`
-              : `Create a flowchart based on this content:\n${cleanText}`
-          );
+          setPrompt((prev) => prev ? `${prev}\n\n${e.target.result}` : e.target.result);
         };
         reader.readAsText(file);
       }
@@ -191,7 +183,7 @@ function FlowchartContent() {
   };
 
   const onConnect = useCallback(
-    (params) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } }, eds)),
+    (params) => setEdges((eds) => addEdge({ ...params, type: "smoothstep", animated: true, style: { stroke: "#6366f1", strokeWidth: 2 } }, eds)),
     [setEdges]
   );
 
@@ -217,13 +209,12 @@ function FlowchartContent() {
         y: event.clientY - bounds.top,
       });
 
-      const meta = NODE_TYPES.find((n) => n.type === nodeType);
+      const meta = PALETTE.find((n) => n.type === nodeType);
       const newNode = {
         id: nextId(),
-        type: "default",
+        type: "custom",
         position,
         data: { label: meta.label, nodeType },
-        style: nodeStyle(nodeType),
       };
       setNodes((nds) => nds.concat(newNode));
     },
@@ -287,24 +278,22 @@ function FlowchartContent() {
         }
 
         const level = levelMap[key] !== undefined ? levelMap[key] : index;
-        const xPos = 250 + (xOffsetMap[key] || 0);
-        const yPos = 40 + level * 110;
+        const xPos = 280 + (xOffsetMap[key] || 0);
+        const yPos = 40 + level * 130;
 
         parsedNodes.push({
           id: key,
-          type: "default",
+          type: "custom",
           position: { x: xPos, y: yPos },
           data: { label, nodeType: nType },
-          style: nodeStyle(nType),
         });
 
-        // Split decision branches (Yes/No offsets)
         const outgoing = rawEdges.filter((e) => e[1] === key);
         if (outgoing.length > 1) {
           outgoing.forEach((edge, i) => {
             const targetKey = edge[3];
             levelMap[targetKey] = level + 1;
-            xOffsetMap[targetKey] = i === 0 ? -140 : 140;
+            xOffsetMap[targetKey] = i === 0 ? -160 : 160;
           });
         }
       });
@@ -321,9 +310,14 @@ function FlowchartContent() {
             source,
             target,
             label: branchLabel,
+            type: "smoothstep",
             animated: true,
-            style: { stroke: isNegative ? "#ef4444" : "#6366f1", strokeWidth: 2 },
-            labelStyle: { fill: "#475569", fontWeight: 700, fontSize: 11 },
+            style: { stroke: isNegative ? "#ef4444" : "#6366f1", strokeWidth: 2.5 },
+            markerEnd: { type: MarkerType.ArrowClosed, color: isNegative ? "#ef4444" : "#6366f1" },
+            labelStyle: { fill: isNegative ? "#dc2626" : "#4f46e5", fontWeight: 800, fontSize: 11 },
+            labelBgPadding: [6, 4],
+            labelBgBorderRadius: 6,
+            labelBgStyle: { fill: "#ffffff", color: "#fff", fillOpacity: 0.9 },
           });
         }
       });
@@ -336,8 +330,7 @@ function FlowchartContent() {
         throw new Error("No valid workflow nodes parsed.");
       }
     } catch (err) {
-      console.error(err);
-      setError("Failed to generate workflow. Ensure backend system prompt is updated.");
+      setError("Failed to generate workflow. Check API response.");
     } finally {
       setLoading(false);
     }
@@ -430,7 +423,6 @@ function FlowchartContent() {
               {loading ? "Synthesizing..." : "Generate Workflow"}
             </button>
 
-            {/* AI Process Recommendations Component */}
             {recommendations.length > 0 && (
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
                 <div className="flex items-center gap-1.5 mb-1.5 text-amber-800 font-bold text-xs">
@@ -450,13 +442,12 @@ function FlowchartContent() {
             <div>
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Drag to Add Node</h3>
               <div className="flex flex-col gap-2">
-                {NODE_TYPES.map((n) => (
+                {PALETTE.map((n) => (
                   <div
                     key={n.type}
                     draggable
                     onDragStart={(e) => onDragStart(e, n.type)}
-                    className="flex items-center gap-3 px-3 py-2 rounded-xl border bg-white cursor-grab hover:border-indigo-400 transition-all text-xs font-semibold text-slate-700"
-                    style={{ borderColor: `${n.color}40` }}
+                    className="flex items-center gap-3 px-3 py-2 rounded-xl border bg-white cursor-grab hover:border-indigo-400 transition-all text-xs font-semibold text-slate-700 shadow-sm"
                   >
                     <span className="material-symbols-outlined text-[16px]" style={{ color: n.color }}>{n.icon}</span>
                     {n.label}
@@ -488,6 +479,7 @@ function FlowchartContent() {
           <ReactFlow
             nodes={nodes}
             edges={edges}
+            nodeTypes={nodeTypes}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
@@ -495,7 +487,7 @@ function FlowchartContent() {
             fitView
             className="w-full h-full"
           >
-            <Background gap={24} color="#e2e8f0" />
+            <Background gap={20} color="#cbd5e1" variant="dots" />
             <Controls className="bg-white border border-slate-200 rounded-xl shadow-md p-1" />
           </ReactFlow>
 

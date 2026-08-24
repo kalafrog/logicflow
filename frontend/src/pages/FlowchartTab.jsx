@@ -54,7 +54,6 @@ function FlowchartContent() {
   const fileInputRef = useRef(null);
   const { project, fitView } = useReactFlow();
 
-  // Load PDF.js dynamically
   useEffect(() => {
     if (!window.pdfjsLib) {
       const script = document.createElement("script");
@@ -67,7 +66,6 @@ function FlowchartContent() {
     }
   }, []);
 
-  // PDF Text Extraction
   const extractPdfText = async (file) => {
     if (!window.pdfjsLib) {
       throw new Error("PDF library loading. Please try again in 2 seconds.");
@@ -85,7 +83,6 @@ function FlowchartContent() {
     return fullText.trim();
   };
 
-  // Microphone Input Handler
   const handleMicrophoneToggle = async () => {
     if (isRecording) {
       if (recognitionRef.current) {
@@ -153,7 +150,6 @@ function FlowchartContent() {
     }
   };
 
-  // Multi-File Upload Handler
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     if (!files.length) return;
@@ -247,7 +243,6 @@ function FlowchartContent() {
     setSelectedNode(null);
   };
 
-  // Generation Handler with Non-Linear Branching & Recommendations Support
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     setLoading(true);
@@ -266,7 +261,6 @@ function FlowchartContent() {
       setRecommendations(data.recommendations || []);
       const mermaidText = data.mermaidCode || "";
 
-      // Regex for parsing node labels and decision branches
       const nodeRegex = /([A-Za-z0-9_]+)\s*[\{\[\(]"?(.*?)"?[\}\]\)]/g;
       const nodeMatches = [...mermaidText.matchAll(nodeRegex)];
       const nodeMap = {};
@@ -304,7 +298,7 @@ function FlowchartContent() {
           style: nodeStyle(nType),
         });
 
-        // Set horizontal displacement for Yes/No child branches
+        // Split decision branches (Yes/No offsets)
         const outgoing = rawEdges.filter((e) => e[1] === key);
         if (outgoing.length > 1) {
           outgoing.forEach((edge, i) => {
@@ -321,14 +315,14 @@ function FlowchartContent() {
         const target = e[3];
 
         if (nodeMap[source] && nodeMap[target]) {
-          const isNoBranch = branchLabel.toLowerCase().includes("no") || branchLabel.toLowerCase().includes("not");
+          const isNegative = branchLabel.toLowerCase().includes("no") || branchLabel.toLowerCase().includes("not");
           parsedEdges.push({
             id: `e_${source}_${target}_${idx}`,
             source,
             target,
             label: branchLabel,
             animated: true,
-            style: { stroke: isNoBranch ? "#ef4444" : "#6366f1", strokeWidth: 2 },
+            style: { stroke: isNegative ? "#ef4444" : "#6366f1", strokeWidth: 2 },
             labelStyle: { fill: "#475569", fontWeight: 700, fontSize: 11 },
           });
         }

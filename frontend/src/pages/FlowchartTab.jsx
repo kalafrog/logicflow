@@ -13,7 +13,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 
-// --- Custom Animations & Glassmorphism Styles ---
+// --- Custom Animations ---
 const customStyles = `
   @keyframes popIn {
     0% { opacity: 0; transform: scale(0.85) translateY(15px); }
@@ -22,7 +22,6 @@ const customStyles = `
   .animate-pop-in {
     animation: popIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
-  
   @keyframes glowPulse {
     0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
     70% { box-shadow: 0 0 0 15px rgba(99, 102, 241, 0); }
@@ -31,29 +30,9 @@ const customStyles = `
   .animate-glow-pulse {
     animation: glowPulse 2.5s infinite;
   }
-  
-  /* The slow-moving animated background */
-  @keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-  .bg-animated-mesh {
-    background: linear-gradient(-45deg, #eef2ff, #f8fafc, #f3e8ff, #e0e7ff, #f1f5f9);
-    background-size: 400% 400%;
-    animation: gradientShift 15s ease infinite;
-  }
-
-  /* Custom styling for the ReactFlow edges */
   .react-flow__edge-path {
     stroke-linecap: round;
   }
-  
-  /* Custom scrollbar for the sidebar */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 10px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.5); }
 `;
 
 const CustomNode = ({ data, selected }) => {
@@ -66,23 +45,23 @@ const CustomNode = ({ data, selected }) => {
   if (status === "positive") {
     borderColor = "border-emerald-400";
     headerBg = "bg-gradient-to-r from-emerald-500 to-emerald-600";
-    bodyBg = "bg-white/80 backdrop-blur-md";
+    bodyBg = "bg-gradient-to-b from-white to-emerald-50";
   } else if (status === "negative") {
     borderColor = "border-red-400";
     headerBg = "bg-gradient-to-r from-red-500 to-red-600";
-    bodyBg = "bg-white/80 backdrop-blur-md";
+    bodyBg = "bg-gradient-to-b from-white to-red-50";
   } else if (isTrigger) {
     borderColor = "border-indigo-400";
     headerBg = "bg-gradient-to-r from-indigo-500 to-indigo-600";
-    bodyBg = "bg-white/80 backdrop-blur-md";
+    bodyBg = "bg-gradient-to-b from-white to-indigo-50";
   } else if (isCondition) {
     borderColor = "border-amber-400";
     headerBg = "bg-gradient-to-r from-amber-500 to-amber-600";
-    bodyBg = "bg-white/80 backdrop-blur-md";
+    bodyBg = "bg-gradient-to-b from-white to-amber-50";
   } else {
     borderColor = "border-slate-300";
     headerBg = "bg-gradient-to-r from-slate-700 to-slate-800";
-    bodyBg = "bg-white/80 backdrop-blur-md";
+    bodyBg = "bg-gradient-to-b from-white to-slate-50";
   }
 
   const iconName = status === "positive"
@@ -97,9 +76,9 @@ const CustomNode = ({ data, selected }) => {
 
   return (
     <div
-      className={`animate-pop-in ${bodyBg} rounded-2xl shadow-xl hover:shadow-2xl border-[2px] border-white/60 ring-1 ring-inset ${
-        selected ? "ring-4 ring-indigo-400/50 scale-105" : `ring-${borderColor.split('-')[1]}-400/50 hover:-translate-y-1`
-      } transition-all duration-300 ease-out overflow-hidden min-w-[220px] max-w-[280px] group ${isTrigger ? "animate-glow-pulse" : ""}`}
+      className={`animate-pop-in ${bodyBg} rounded-2xl shadow-lg hover:shadow-2xl border-[2.5px] ${borderColor} transition-all duration-300 ease-out overflow-hidden min-w-[220px] max-w-[280px] group ${
+        selected ? "ring-4 ring-indigo-300/50 scale-105" : "hover:-translate-y-1.5"
+      } ${isTrigger ? "animate-glow-pulse" : ""}`}
     >
       <Handle 
         type="target" 
@@ -114,7 +93,7 @@ const CustomNode = ({ data, selected }) => {
         </div>
       </div>
       
-      <div className="p-4 text-xs font-semibold text-slate-800 text-center leading-relaxed">
+      <div className="p-4 text-xs font-semibold text-slate-700 text-center leading-relaxed">
         {data.label}
       </div>
 
@@ -357,7 +336,7 @@ function FlowchartContent() {
         if (children.length > 1) {
           children.forEach((cEdge, idx) => {
             const childKey = cEdge[3];
-            const offset = idx === 0 ? -220 : 220;
+            const offset = idx === 0 ? -220 : 220; // Increased offset slightly for wider nodes
             xOffsets[childKey] = (xOffsets[parentKey] || 0) + offset;
           });
         }
@@ -382,7 +361,7 @@ function FlowchartContent() {
 
         const depth = levels[key] !== undefined ? levels[key] : index;
         const xPos = 300 + (xOffsets[key] || 0);
-        const yPos = 40 + depth * 140;
+        const yPos = 40 + depth * 140; // increased depth spacing slightly
 
         return {
           id: key,
@@ -401,12 +380,19 @@ function FlowchartContent() {
         const isPositive = lowerBranch.includes("yes") || lowerBranch.includes("accept") || lowerBranch.includes("approve") || lowerBranch.includes("confirm") || lowerBranch.includes("success");
         const isNegative = lowerBranch.includes("no") || lowerBranch.includes("reject") || lowerBranch.includes("fail") || lowerBranch.includes("cancel") || lowerBranch.includes("out of stock");
 
-        let strokeColor = "#94a3b8"; 
-        let edgeAnimated = true; 
+        let strokeColor = "#94a3b8"; // slate-400 default
+        let edgeAnimated = false; // Add motion only to specific branches if desired, or all
 
-        if (isPositive) strokeColor = "#10b981"; 
-        else if (isNegative) strokeColor = "#ef4444"; 
-        else strokeColor = "#6366f1"; 
+        if (isPositive) {
+          strokeColor = "#10b981"; // emerald-500
+          edgeAnimated = true;
+        } else if (isNegative) {
+          strokeColor = "#ef4444"; // red-500
+          edgeAnimated = true;
+        } else {
+            strokeColor = "#6366f1"; // indigo-500 for normal flow
+            edgeAnimated = true;
+        }
 
         return {
           id: `e_${source}_${target}_${idx}`,
@@ -441,54 +427,45 @@ function FlowchartContent() {
   return (
     <>
       <style>{customStyles}</style>
-      <div className="min-h-screen bg-animated-mesh flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
-        
-        {/* Glassmorphism Header */}
-        <header className="bg-white/50 backdrop-blur-xl border-b border-white/40 shadow-[0_4px_30px_rgba(0,0,0,0.03)] flex justify-between items-center h-16 px-8 w-full fixed top-0 z-50 transition-all">
+      <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 flex justify-between items-center h-14 px-6 w-full fixed top-0 z-50">
           <div className="flex items-center gap-4">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-200">
-              <span className="material-symbols-outlined text-white text-[18px]">account_tree</span>
-            </div>
-            <div className="font-extrabold text-xl bg-clip-text text-transparent bg-gradient-to-r from-indigo-700 to-violet-600 tracking-tight shrink-0">
+            <div className="font-extrabold text-lg bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-500 tracking-tighter shrink-0">
               LogicFlow AI
             </div>
-            <div className="h-6 w-px bg-slate-300/50 mx-2"></div>
+            <div className="h-6 w-px bg-slate-200 mx-2"></div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-sm text-slate-600 tracking-wide">Workflow Studio</span>
+              <span className="font-medium text-sm text-slate-700">Workflow Studio</span>
             </div>
           </div>
         </header>
 
-        <div className="flex flex-1 pt-16 h-full relative">
-          
-          {/* Floating Glassmorphism Sidebar */}
-          <aside className="absolute left-6 top-24 bottom-6 w-80 flex flex-col z-40 bg-white/60 backdrop-blur-xl border border-white/70 rounded-3xl p-5 shadow-[0_8px_32px_rgba(31,38,135,0.07)]">
-            <div className="mb-4">
-              <h2 className="font-extrabold text-lg text-slate-800 bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-500">
-                Workflow Engine
-              </h2>
-              <p className="text-xs font-semibold text-slate-500 tracking-wide">AI Logic Extraction</p>
+        <div className="flex flex-1 pt-14 h-full relative">
+          <aside className="bg-white border-r border-slate-200 fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-72 flex flex-col p-4 z-40 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+            <div className="mb-3">
+              <h2 className="font-bold text-base text-slate-900">Workflow Engine</h2>
+              <p className="text-xs text-slate-500">AI Logic Extraction</p>
             </div>
 
-            <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 pb-2">
+            <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
               <div className="relative group">
                 <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  className="w-full h-32 border border-white/50 bg-white/40 rounded-2xl p-4 pr-12 text-sm text-slate-800 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-400/20 resize-none transition-all shadow-inner placeholder:text-slate-400 font-medium"
+                  className="w-full h-28 border border-slate-200 rounded-2xl p-3 pr-10 text-xs text-slate-800 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 resize-none bg-slate-50 transition-all"
                   placeholder="Describe process, record voice, or attach files..."
                 ></textarea>
 
                 <button
                   onClick={handleMicrophoneToggle}
                   title={isRecording ? "Stop recording" : "Start voice input"}
-                  className={`absolute right-3 bottom-4 p-2.5 rounded-full transition-all duration-300 ${
+                  className={`absolute right-2 bottom-3 p-2 rounded-full transition-all ${
                     isRecording
-                      ? "bg-red-500 text-white animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]"
-                      : "bg-white/80 text-indigo-500 hover:text-indigo-700 hover:bg-white shadow-sm hover:shadow-md"
+                      ? "bg-red-500 text-white animate-pulse shadow-md shadow-red-200"
+                      : "text-slate-400 hover:text-indigo-600 hover:bg-slate-200/50"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[20px]">
+                  <span className="material-symbols-outlined text-[18px]">
                     {isRecording ? "mic_off" : "mic"}
                   </span>
                 </button>
@@ -505,48 +482,135 @@ function FlowchartContent() {
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-indigo-200/60 rounded-xl p-4 text-center text-sm font-semibold text-indigo-500 hover:bg-indigo-50/50 hover:border-indigo-400 transition-all cursor-pointer"
+                  className="w-full border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50/30 py-2.5 rounded-2xl text-slate-600 text-xs font-bold flex items-center justify-center gap-2 transition-all hover:text-indigo-600 group"
                 >
+                  <span className="material-symbols-outlined text-[18px] group-hover:-translate-y-0.5 transition-transform">attach_file</span>
                   Attach Files
                 </button>
+
+                {attachedFiles.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {attachedFiles.map((name, i) => (
+                      <span
+                        key={i}
+                        className="text-[10px] font-medium bg-slate-100 border border-slate-200 text-slate-600 px-2 py-1 rounded-lg truncate max-w-full"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {attachedFiles.length > 0 && (
-                <div className="mt-2 text-xs font-medium text-slate-500">
-                  {attachedFiles.length} file(s) attached
+              <button
+                onClick={handleGenerate}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold py-3 rounded-2xl transition-all shadow-md shadow-indigo-200 flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 active:translate-y-0"
+              >
+                <span className={`material-symbols-outlined text-[18px] ${loading ? 'animate-spin' : ''}`}>
+                  {loading ? "sync" : "magic_button"}
+                </span>
+                {loading ? "Synthesizing..." : "Generate Workflow"}
+              </button>
+
+              {recommendations.length > 0 && (
+                <div className="p-3.5 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl shadow-sm">
+                  <div className="flex items-center gap-1.5 mb-2 text-amber-800 font-extrabold text-xs">
+                    <span className="material-symbols-outlined text-[16px] text-amber-500">lightbulb</span>
+                    AI Recommendations
+                  </div>
+                  <ul className="text-[11px] font-medium text-amber-900/80 flex flex-col gap-1.5 list-disc pl-4">
+                    {recommendations.map((rec, i) => (
+                      <li key={i}>{rec}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
+
+              <div className="h-px bg-slate-100 my-1"></div>
+
+              <div>
+                <h3 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-3">Drag to Add</h3>
+                <div className="flex flex-col gap-2.5">
+                  {PALETTE.map((n) => (
+                    <div
+                      key={n.type}
+                      draggable
+                      onDragStart={(e) => onDragStart(e, n.type)}
+                      className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl border-2 border-slate-100 bg-white cursor-grab hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5 transition-all text-xs font-bold text-slate-700 active:cursor-grabbing"
+                    >
+                      <span className="material-symbols-outlined text-[18px]" style={{ color: n.color }}>{n.icon}</span>
+                      {n.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <button
-              onClick={handleGenerate}
-              disabled={loading}
-              className="w-full mt-4 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-300 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
-            >
-              {loading ? "Generating..." : "Generate Workflow"}
-            </button>
-            {error && <div className="mt-2 text-red-500 text-xs font-semibold">{error}</div>}
+            {error && (
+              <div className="animate-pop-in mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-[11px] font-semibold flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px]">error</span>
+                {error}
+              </div>
+            )}
           </aside>
 
-          {/* ReactFlow Canvas */}
-          <div className="flex-1 w-full h-full" ref={reactFlowWrapper}>
+          <main
+            ref={reactFlowWrapper}
+            className="flex-1 ml-72 relative overflow-hidden bg-slate-50/50 h-[calc(100vh-3.5rem)]"
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+          >
+            {!hasWorkflow && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 pointer-events-none z-10 text-center p-6 animate-pop-in">
+                <div className="w-16 h-16 rounded-3xl bg-white border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                  <span className="material-symbols-outlined text-[32px]">account_tree</span>
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-800 text-sm mb-1">Canvas is empty</h3>
+                  <p className="text-xs text-slate-500 max-w-xs font-medium">Use voice input, upload documents, or drag nodes onto the canvas to begin.</p>
+                </div>
+              </div>
+            )}
+
             <ReactFlow
               nodes={nodes}
               edges={edges}
+              nodeTypes={nodeTypes}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
-              onDrop={onDrop}
-              onDragOver={onDragOver}
               onNodeClick={onNodeClick}
-              nodeTypes={nodeTypes}
               fitView
-              className="bg-transparent"
+              className="w-full h-full"
             >
-              <Background color="#94a3b8" gap={16} size={1} />
-              <Controls className="!bg-white/80 !backdrop-blur-md !border-white/50 !shadow-xl !rounded-xl" />
+              <Background gap={24} color="#94a3b8" variant="dots" size={1.5} className="opacity-40" />
+              <Controls className="bg-white/90 backdrop-blur-sm border-none shadow-[0_4px_20px_rgb(0,0,0,0.08)] rounded-xl p-1 !m-6 overflow-hidden" />
             </ReactFlow>
-          </div>
+
+            {selectedNode && (
+              <div className="absolute top-6 right-6 w-72 bg-white/90 backdrop-blur-md border border-slate-200/60 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-5 z-30 animate-pop-in">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider">Edit Node</h4>
+                  <button onClick={() => setSelectedNode(null)} className="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full p-1 transition-colors">
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                </div>
+                <input
+                  value={editLabel}
+                  onChange={(e) => setEditLabel(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium mb-4 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all"
+                  autoFocus
+                />
+                <button
+                  onClick={saveNodeLabel}
+                  className="w-full bg-slate-900 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-indigo-600 transition-colors shadow-sm"
+                >
+                  Save Changes
+                </button>
+              </div>
+            )}
+          </main>
         </div>
       </div>
     </>

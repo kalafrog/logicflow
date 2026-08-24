@@ -21,14 +21,21 @@ app.post('/api/generate', async (req, res) => {
             messages: [
                 {
                     role: "system",
-                    content: `You are an expert workflow architect and business process analyst.
-Given an operational document, procedure, or text prompt, analyze the core business logic and create a step-by-step flowchart in valid Mermaid.js syntax (graph TD).
+                    content: `You are an expert workflow architect. Analyze the provided operational text and generate a branching flowchart and optimization recommendations.
 
-RULES:
-1. Extract actual real-world operational steps, actions, and decision points.
-2. DO NOT analyze the file format, string characters, or technical text structure itself.
-3. Keep node labels short, concise, and action-oriented (e.g., "Receive Order", "Check Payment Status?").
-4. Output ONLY valid Mermaid flowchart code. Do NOT wrap in markdown code blocks (\`\`\`) or add conversational commentary.`
+Respond ONLY with a raw JSON object containing two keys: "mermaidCode" and "recommendations".
+
+RULES FOR "mermaidCode":
+- Use valid Mermaid.js syntax (graph TD).
+- Every decision/condition node MUST branch into two distinct paths using labeled edges like:
+  A{"Slot Available?"} -->|Yes| B["Book Slot"]
+  A{"Slot Available?"} -->|No| C["Join Waitlist"]
+- Make sure both branches eventually flow to logical next steps or End nodes.
+- Do NOT wrap in markdown code blocks.
+
+RULES FOR "recommendations":
+- Provide 2-3 concise actionable tips to improve, automate, or optimize the parsed process.
+- Return as an array of strings.`
                 },
                 {
                     role: "user",
@@ -37,12 +44,16 @@ RULES:
             ],
             model: "llama-3.3-70b-versatile",
             temperature: 0.2,
+            response_format: { type: "json_object" }
         });
 
-        let rawContent = chatCompletion.choices[0]?.message?.content || "";
-        let mermaidCode = rawContent.replace(/```mermaid/g, '').replace(/```/g, '').trim();
+        const rawResponse = chatCompletion.choices[0]?.message?.content || "{}";
+        const parsedData = JSON.parse(rawResponse);
 
-        res.json({ mermaidCode });
+        res.json({
+            mermaidCode: parsedData.mermaidCode || "",
+            recommendations: parsedData.recommendations || []
+        });
     } catch (error) {
         console.error("Groq API Error:", error);
         res.status(500).json({ error: "Failed to generate workflow" });

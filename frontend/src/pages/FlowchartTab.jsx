@@ -29,7 +29,8 @@ function nodeStyle(nodeType) {
     fontSize: 13,
     fontWeight: 600,
     color: "#1e293b",
-    minWidth: 220,
+    minWidth: 200,
+    textAlign: "center",
     boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)",
   };
 }
@@ -44,6 +45,7 @@ function FlowchartContent() {
   const [error, setError] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
 
   const recognitionRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -52,7 +54,7 @@ function FlowchartContent() {
   const fileInputRef = useRef(null);
   const { project, fitView } = useReactFlow();
 
-  // Dynamically load PDF.js from CDN to handle compressed stream extraction
+  // Load PDF.js dynamically
   useEffect(() => {
     if (!window.pdfjsLib) {
       const script = document.createElement("script");
@@ -65,12 +67,11 @@ function FlowchartContent() {
     }
   }, []);
 
-  // Robust PDF Reader using global pdfjsLib
+  // PDF Text Extraction
   const extractPdfText = async (file) => {
     if (!window.pdfjsLib) {
-      throw new Error("PDF library is still loading. Please try again in 2 seconds.");
+      throw new Error("PDF library loading. Please try again in 2 seconds.");
     }
-
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let fullText = "";
@@ -81,7 +82,6 @@ function FlowchartContent() {
       const pageText = textContent.items.map((item) => item.str).join(" ");
       fullText += pageText + "\n";
     }
-
     return fullText.trim();
   };
 
@@ -153,7 +153,7 @@ function FlowchartContent() {
     }
   };
 
-  // Clean File Parsing
+  // Multi-File Upload Handler
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     if (!files.length) return;
@@ -167,15 +167,15 @@ function FlowchartContent() {
           if (parsedText) {
             setPrompt((prev) =>
               prev
-                ? `${prev}\n\nCreate a step-by-step flowchart workflow based on this process document:\n${parsedText}`
-                : `Create a step-by-step flowchart workflow based on this process document:\n${parsedText}`
+                ? `${prev}\n\nCreate a branching workflow for this document:\n${parsedText}`
+                : `Create a branching workflow for this document:\n${parsedText}`
             );
           } else {
-            setError("Could not extract text from PDF. It may be scanned images.");
+            setError("Could not extract text from PDF.");
           }
         } catch (pdfErr) {
           console.error("PDF Parsing error:", pdfErr);
-          setError("Failed to parse PDF file. Try again.");
+          setError("Failed to parse PDF file.");
         }
       } else if (file.type.startsWith("image/")) {
         setPrompt((prev) => `${prev}\n\n[Attached image: ${file.name}]`);
@@ -247,6 +247,7 @@ function FlowchartContent() {
     setSelectedNode(null);
   };
 
+  // Generation Handler with Non-Linear Branching & Recommendations Support
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
     setLoading(true);
@@ -262,108 +263,87 @@ function FlowchartContent() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to generate workflow");
 
+      setRecommendations(data.recommendations || []);
       const mermaidText = data.mermaidCode || "";
-      const nodeMatches = [...mermaidText.matchAll(/([A-Za-z0-9_]+)\s*\["?(.*?)"?\]/g)];
-      const rawEdgeMatches = [...mermaidText.matchAll(/([A-Za-z0-9_]+)\s*-->\s*([A-Za-z0-9_]+)/g)];
 
-      let parsedNodes = [];
-      let parsedEdges = [];
+      // Regex for parsing node labels and decision branches
+      const nodeRegex = /([A-Za-z0-9_]+)\s*[\{\[\(]"?(.*?)"?[\}\]\)]/g;
+      const nodeMatches = [...mermaidText.matchAll(nodeRegex)];
+      const nodeMap = {};
+      nodeMatches.forEach((m) => (nodeMap[m[1]] = m[2]));
 
-      if (nodeMatches.length > 0) {
-        const nodeMap = {};
-        nodeMatches.forEach((m) => { nodeMap[m[1]] = m[2]; });
+      const edgeRegex = /([A-Za-z0-9_]+)\s*-->\s*(?:\|([^|]+)\|)?\s*([A-Za-z0-9_]+)/g;
+      const rawEdges = [...mermaidText.matchAll(edgeRegex)];
 
-        const adj = {};
-        const incoming = {};
-        nodeMatches.forEach((m) => {
-          adj[m[1]] = [];
-          incoming[m[1]] = 0;
-        });
+      const parsedNodes = [];
+      const parsedEdges = [];
+      const keys = Object.keys(nodeMap);
 
-        rawEdgeMatches.forEach((e) => {
-          const src = e[1];
-          const dest = e[2];
-          if (adj[src]) {
-            adj[src].push(dest);
-            incoming[dest] = (incoming[dest] || 0) + 1;
-          }
-        });
+      const levelMap = {};
+      const xOffsetMap = {};
 
-        let currentNodeKey = Object.keys(nodeMap).find((k) => incoming[k] === 0) || Object.keys(nodeMap)[0];
-        let orderedKeys = [];
-        let visited = new Set();
-        while (currentNodeKey && !visited.has(currentNodeKey) && nodeMap[currentNodeKey]) {
-          visited.add(currentNodeKey);
-          orderedKeys.push(currentNodeKey);
-          const nexts = adj[currentNodeKey];
-          currentNodeKey = nexts && nexts.length > 0 ? nexts[0] : null;
+      keys.forEach((key, index) => {
+        const label = nodeMap[key];
+        const lower = label.toLowerCase();
+        let nType = "action";
+        if (lower.includes("start") || lower.includes("end") || index === 0 || index === keys.length - 1) {
+          nType = "trigger";
+        } else if (label.includes("?") || lower.includes("check") || lower.includes("available") || lower.includes("verify")) {
+          nType = "condition";
         }
 
-        Object.keys(nodeMap).forEach((k) => {
-          if (!visited.has(k)) { orderedKeys.push(k); }
+        const level = levelMap[key] !== undefined ? levelMap[key] : index;
+        const xPos = 250 + (xOffsetMap[key] || 0);
+        const yPos = 40 + level * 110;
+
+        parsedNodes.push({
+          id: key,
+          type: "default",
+          position: { x: xPos, y: yPos },
+          data: { label, nodeType: nType },
+          style: nodeStyle(nType),
         });
 
-        orderedKeys.forEach((rawKey, index) => {
-          const label = nodeMap[rawKey];
-          let nType = "action";
-          const lower = label.toLowerCase();
-
-          if (lower.includes("start") || lower.includes("end") || lower.includes("trigger") || index === 0 || index === orderedKeys.length - 1) {
-            nType = "trigger";
-          } else if (lower.includes("?") || lower.includes("check") || lower.includes("verify") || lower.includes("decision")) {
-            nType = "condition";
-          }
-
-          parsedNodes.push({
-            id: nextId(),
-            type: "default",
-            position: { x: 250, y: 40 + index * 110 },
-            data: { label, nodeType: nType },
-            style: nodeStyle(nType),
+        // Set horizontal displacement for Yes/No child branches
+        const outgoing = rawEdges.filter((e) => e[1] === key);
+        if (outgoing.length > 1) {
+          outgoing.forEach((edge, i) => {
+            const targetKey = edge[3];
+            levelMap[targetKey] = level + 1;
+            xOffsetMap[targetKey] = i === 0 ? -140 : 140;
           });
-        });
-
-        rawEdgeMatches.forEach((e, idx) => {
-          const srcLabel = nodeMap[e[1]];
-          const destLabel = nodeMap[e[2]];
-
-          const sourceNode = parsedNodes.find((n) => n.data.label === srcLabel);
-          const targetNode = parsedNodes.find((n) => n.data.label === destLabel);
-
-          if (sourceNode && targetNode) {
-            parsedEdges.push({
-              id: `e_${sourceNode.id}_${targetNode.id}_${idx}`,
-              source: sourceNode.id,
-              target: targetNode.id,
-              animated: true,
-              style: { stroke: "#6366f1", strokeWidth: 2 },
-            });
-          }
-        });
-
-        if (parsedEdges.length === 0 && parsedNodes.length > 1) {
-          for (let i = 0; i < parsedNodes.length - 1; i++) {
-            parsedEdges.push({
-              id: `e_${i}_${i + 1}`,
-              source: parsedNodes[i].id,
-              target: parsedNodes[i + 1].id,
-              animated: true,
-              style: { stroke: "#6366f1", strokeWidth: 2 },
-            });
-          }
         }
-      }
+      });
+
+      rawEdges.forEach((e, idx) => {
+        const source = e[1];
+        const branchLabel = e[2] || "";
+        const target = e[3];
+
+        if (nodeMap[source] && nodeMap[target]) {
+          const isNoBranch = branchLabel.toLowerCase().includes("no") || branchLabel.toLowerCase().includes("not");
+          parsedEdges.push({
+            id: `e_${source}_${target}_${idx}`,
+            source,
+            target,
+            label: branchLabel,
+            animated: true,
+            style: { stroke: isNoBranch ? "#ef4444" : "#6366f1", strokeWidth: 2 },
+            labelStyle: { fill: "#475569", fontWeight: 700, fontSize: 11 },
+          });
+        }
+      });
 
       if (parsedNodes.length > 0) {
         setNodes(parsedNodes);
         setEdges(parsedEdges);
         setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50);
       } else {
-        throw new Error("No valid workflow nodes could be parsed.");
+        throw new Error("No valid workflow nodes parsed.");
       }
     } catch (err) {
       console.error(err);
-      setError("Failed to generate workflow. Please check your prompt or file content.");
+      setError("Failed to generate workflow. Ensure backend system prompt is updated.");
     } finally {
       setLoading(false);
     }
@@ -386,13 +366,13 @@ function FlowchartContent() {
       </header>
 
       <div className="flex flex-1 pt-14 h-full relative">
-        <aside className="bg-white border-r border-slate-200 fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 flex flex-col p-4 z-40">
-          <div className="mb-4">
+        <aside className="bg-white border-r border-slate-200 fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-72 flex flex-col p-4 z-40">
+          <div className="mb-3">
             <h2 className="font-bold text-base text-slate-900">Workflow Engine</h2>
             <p className="text-xs text-slate-500">AI Logic Extraction</p>
           </div>
 
-          <div className="flex-1 flex flex-col gap-3 overflow-y-auto">
+          <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-1">
             <div className="relative">
               <textarea
                 value={prompt}
@@ -456,6 +436,21 @@ function FlowchartContent() {
               {loading ? "Synthesizing..." : "Generate Workflow"}
             </button>
 
+            {/* AI Process Recommendations Component */}
+            {recommendations.length > 0 && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <div className="flex items-center gap-1.5 mb-1.5 text-amber-800 font-bold text-xs">
+                  <span className="material-symbols-outlined text-[16px]">lightbulb</span>
+                  AI Recommendations
+                </div>
+                <ul className="text-[11px] text-amber-900 flex flex-col gap-1.5 list-disc pl-4">
+                  {recommendations.map((rec, i) => (
+                    <li key={i}>{rec}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className="h-px bg-slate-200 my-1"></div>
 
             <div>
@@ -482,7 +477,7 @@ function FlowchartContent() {
 
         <main
           ref={reactFlowWrapper}
-          className="flex-1 ml-64 relative overflow-hidden bg-[#F8FAFC] h-[calc(100vh-3.5rem)]"
+          className="flex-1 ml-72 relative overflow-hidden bg-[#F8FAFC] h-[calc(100vh-3.5rem)]"
           onDrop={onDrop}
           onDragOver={onDragOver}
         >

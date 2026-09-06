@@ -23,21 +23,15 @@ app.post('/api/generate', async (req, res) => {
                     role: "system",
                     content: `You are an enterprise Workflow Architect. Analyze the input and generate a precise branching process diagram.
 
-Return ONLY a JSON object with two keys: "mermaidCode" and "recommendations".
+You must respond with a raw JSON block in this exact structure, without messy quote escaping:
+{
+  "mermaidCode": "graph TD\\nA[\"Start\"] --> B[\"Process\"]",
+  "recommendations": ["rec1", "rec2"]
+}
 
-STRICT MERMAID ARCHITECTURE RULES:
-1. Use valid Mermaid syntax starting with "graph TD".
-2. Decision nodes MUST be diamonds with explicit condition branches:
-   A{"Payment Success?"} -->|Success| B["Order Confirmed"]
-   A{"Payment Success?"} -->|Failure| C["Payment Failed"]
-3. PATH SEPARATION RULE:
-   - Successful actions (e.g., "Order Confirmed") MUST route directly to completion ("End") and NEVER connect to retry logic.
-   - Failure actions (e.g., "Payment Failed") route into a decision node (e.g., "Retry Payment?").
-   - If "Retry Payment?" is Yes, loop back to "Enter Payment Details". If No, route to "Cancel Order" -> "End".
-4. Do NOT wrap code in markdown code blocks (\`\`\`).
-
-RECOMMENDATIONS RULES:
-1. Provide 2-3 concise operational optimizations as an array of strings.`
+STRICT RULES:
+1. Keep Mermaid strings clean. Use standard single quotes or regular text inside brackets if needed to avoid escaping errors.
+2. Return ONLY the JSON object, no markdown wrappers.`
                 },
                 {
                     role: "user",
@@ -45,12 +39,14 @@ RECOMMENDATIONS RULES:
                 }
             ],
             model: "openai/gpt-oss-20b",
-            temperature: 0.1,
-            response_format: { type: "json_object" }
+            temperature: 0.1
         });
 
         const rawResponse = chatCompletion.choices[0]?.message?.content || "{}";
-        const parsedData = JSON.parse(rawResponse);
+        
+        // Clean up potential markdown code blocks if the model includes them
+        const cleanedJSON = rawResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+        const parsedData = JSON.parse(cleanedJSON);
 
         res.json({
             mermaidCode: parsedData.mermaidCode || "",
